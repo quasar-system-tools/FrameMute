@@ -1,4 +1,4 @@
-const CACHE = "maskly-local-v4";
+const CACHE = "maskly-local-v5";
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const fromBase = (path = "") => `${BASE_PATH}/${path}`;
 const APP_SHELL = [

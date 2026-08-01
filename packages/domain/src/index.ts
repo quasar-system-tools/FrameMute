@@ -1,5 +1,12 @@
 export type Point = { x: number; y: number };
 
+export type Rect = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 export type MaskSource = "detected" | "manual";
 
 export type MaskRegion = {
@@ -72,4 +79,36 @@ export function createManualRegion(start: Point, end: Point): MaskRegion | null 
     height,
     mosaicSize: DEFAULT_MOSAIC_SIZE,
   };
+}
+
+export function duplicateRegion(region: MaskRegion, offset = 0.025): MaskRegion {
+  const maxX = 1 - region.width;
+  const maxY = 1 - region.height;
+  const x = region.x + offset <= maxX
+    ? region.x + offset
+    : clamp(region.x - offset, 0, maxX);
+  const y = region.y + offset <= maxY
+    ? region.y + offset
+    : clamp(region.y - offset, 0, maxY);
+
+  return {
+    ...region,
+    id: createMaskId(),
+    source: "manual",
+    x,
+    y,
+    confidence: undefined,
+  };
+}
+
+export function intersectsRect(region: Rect, selection: Rect) {
+  return region.x < selection.x + selection.width
+    && region.x + region.width > selection.x
+    && region.y < selection.y + selection.height
+    && region.y + region.height > selection.y;
+}
+
+export function applyMosaicSize(regions: MaskRegion[], selectedIds: string[], mosaicSize: number) {
+  const selected = new Set(selectedIds);
+  return regions.map((region) => selected.has(region.id) ? { ...region, mosaicSize } : region);
 }
