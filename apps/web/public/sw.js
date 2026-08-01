@@ -1,4 +1,4 @@
-const CACHE = "maskly-local-v1";
+const CACHE = "maskly-local-v3";
 const APP_SHELL = [
   "/",
   "/index.html",
