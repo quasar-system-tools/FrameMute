@@ -1,0 +1,35 @@
+node_modules/
+dist/
+src-tauri/target/
+apps/*/public/models/
+apps/*/public/wasm/
+.DS_Store
+
+# Local environment, credentials, and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.mobileprovision
+*.keystore
+*.jks
+credentials.json
+secrets.json
+
+# Editor, operating system, and runtime artifacts
+.idea/
+.vscode/
+*.log
+*.local
+coverage/
+*.tsbuildinfo
+
+# Local Korean-language planning and verification records.
+# The public repository contains English product documentation only.
+DEVELOPMENT_PLAN.md
+MONOREPO_PLAN.md
+raw/
+wiki/

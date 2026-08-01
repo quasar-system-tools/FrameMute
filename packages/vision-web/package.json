@@ -1,0 +1,11 @@
+{
+  "name": "@maskly/vision-web",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@maskly/domain": "*",
+    "@mediapipe/tasks-vision": "^1.0.0"
+  }
+}

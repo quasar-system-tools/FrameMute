@@ -1,0 +1,23 @@
+{
+  "name": "maskly",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "assets:mediapipe": "node scripts/copy-mediapipe-assets.mjs",
+    "dev:desktop": "npm run dev --workspace @maskly/desktop --",
+    "build:desktop": "npm run build --workspace @maskly/desktop",
+    "tauri:desktop": "npm run tauri --workspace @maskly/desktop --",
+    "dev:web": "npm run dev --workspace @maskly/web --",
+    "build:web": "npm run build --workspace @maskly/web",
+    "test": "vitest run",
+    "verify": "npm run assets:mediapipe && npm run test && npm run build:desktop && npm run build:web && npm run verify:native --workspace @maskly/desktop"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.10"
+  }
+}

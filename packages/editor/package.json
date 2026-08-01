@@ -1,0 +1,12 @@
+{
+  "name": "@maskly/editor",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@maskly/domain": "*",
+    "@maskly/vision-web": "*",
+    "react": "^19.1.0"
+  }
+}
