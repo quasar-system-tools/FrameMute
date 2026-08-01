@@ -3,9 +3,15 @@ import ReactDOM from "react-dom/client";
 import { MasklyEditor } from "@maskly/editor";
 
 if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    void navigator.serviceWorker.register("/sw.js");
-  });
+  if (import.meta.env.DEV) {
+    void navigator.serviceWorker.getRegistrations().then((registrations) =>
+      Promise.all(registrations.map((registration) => registration.unregister())),
+    );
+  } else {
+    window.addEventListener("load", () => {
+      void navigator.serviceWorker.register("/sw.js");
+    });
+  }
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
