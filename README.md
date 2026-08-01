@@ -56,6 +56,8 @@ npm run tauri:desktop -- build --bundles app
 
 Automatic detection is an aid, not a guarantee. It may miss faces or identify unsuitable regions; manual review is required for any privacy-sensitive use.
 
+See the [synthetic multi-face validation](docs/multi-face-validation.md) for a ten-face regression example.
+
 ## Architecture
 
 ```text
