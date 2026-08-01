@@ -58,6 +58,16 @@ Automatic detection is an aid, not a guarantee. It may miss faces or identify un
 
 See the [synthetic multi-face validation](docs/multi-face-validation.md) for a ten-face regression example.
 
+## Multi-face example
+
+The following comparison uses an AI-generated image of fictional adults, not a
+real-person photo. Automatic detection created ten mosaic regions locally; each
+result still requires review before export.
+
+| Original (AI-generated) | Masked locally in Maskly |
+| --- | --- |
+| ![AI-generated group portrait with ten faces](docs/images/multi-face-input-ai-generated.png) | ![Ten automatic mosaic masks applied to the group portrait](docs/images/multi-face-masking-result.png) |
+
 ## Architecture
 
 ```text
