@@ -1,5 +1,6 @@
 import {
   ChangeEvent,
+  MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
@@ -7,23 +8,39 @@ import {
   useState,
 } from "react";
 import {
+  applyMosaicSize,
   clamp,
   createDetectedRegions,
   createManualRegion,
+  duplicateRegion,
+  intersectsRect,
   MAX_IMAGE_SIZE,
   MIN_REGION,
   type MaskRegion,
   type Point,
+  type Rect,
 } from "@maskly/domain";
 import { detectFaces } from "@maskly/vision-web";
 import "./editor.css";
 
 type DragState =
   | { type: "add"; start: Point; current: Point }
-  | { type: "move"; id: string; start: Point; initial: MaskRegion }
+  | { type: "select"; start: Point; current: Point; initialSelection: string[] }
+  | { type: "move"; start: Point; initial: MaskRegion[] }
   | { type: "resize"; id: string; start: Point; initial: MaskRegion };
 
+type ContextMenuState = { id: string; x: number; y: number } | null;
+
 const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+function rectFromPoints(start: Point, end: Point): Rect {
+  return {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    width: Math.abs(end.x - start.x),
+    height: Math.abs(end.y - start.y),
+  };
+}
 
 function mosaic(ctx: CanvasRenderingContext2D, image: HTMLImageElement, region: MaskRegion) {
   const x = Math.round(region.x * image.naturalWidth);
@@ -56,35 +73,38 @@ function MasklyEditor() {
   const isNewFileRef = useRef(false);
   const undoStackRef = useRef<MaskRegion[][]>([]);
   const redoStackRef = useRef<MaskRegion[][]>([]);
+  const copiedRegionsRef = useRef<MaskRegion[]>([]);
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<Point | null>(null);
   const [regions, setRegions] = useState<MaskRegion[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [tool, setTool] = useState<"select" | "add">("select");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [drag, setDrag] = useState<DragState | null>(null);
+  const [isAddingMask, setIsAddingMask] = useState(false);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [analysisStatus, setAnalysisStatus] = useState<"idle" | "analyzing" | "ready" | "error">("idle");
   const [message, setMessage] = useState("Photos are edited only on this device.");
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
 
-  const selectedRegion = regions.find((region) => region.id === selectedId) ?? null;
+  const selectedRegions = regions.filter((region) => selectedIds.includes(region.id));
+  const selectedRegion = regions.find((region) => region.id === selectedIds[selectedIds.length - 1]) ?? null;
 
   const updateHistoryState = () => {
     setHistoryState({ canUndo: undoStackRef.current.length > 0, canRedo: redoStackRef.current.length > 0 });
   };
 
-  const rememberRegions = () => {
+  const rememberRegions = useCallback(() => {
     undoStackRef.current = [...undoStackRef.current.slice(-29), regions.map((region) => ({ ...region }))];
     redoStackRef.current = [];
     updateHistoryState();
-  };
+  }, [regions]);
 
   const undo = useCallback(() => {
     const previous = undoStackRef.current.pop();
     if (!previous) return;
     redoStackRef.current = [...redoStackRef.current, regions.map((region) => ({ ...region }))];
     setRegions(previous);
-    setSelectedId(previous[0]?.id ?? null);
+    setSelectedIds(previous[0] ? [previous[0].id] : []);
     setMessage("Reverted to the previous edit.");
     updateHistoryState();
   }, [regions]);
@@ -94,13 +114,51 @@ function MasklyEditor() {
     if (!next) return;
     undoStackRef.current = [...undoStackRef.current, regions.map((region) => ({ ...region }))];
     setRegions(next);
-    setSelectedId(next[0]?.id ?? null);
+    setSelectedIds(next[0] ? [next[0].id] : []);
     setMessage("Reapplied the reverted edit.");
     updateHistoryState();
   }, [regions]);
 
+  const copyRegions = useCallback((items: MaskRegion[]) => {
+    copiedRegionsRef.current = items.map((region) => ({ ...region }));
+    setMessage(`${items.length === 1 ? "Mask" : `${items.length} masks`} copied. Press Cmd/Ctrl+V to paste.`);
+    setContextMenu(null);
+  }, []);
+
+  const pasteCopiedRegions = useCallback(() => {
+    const copied = copiedRegionsRef.current;
+    if (!copied.length || !imageRef.current) return;
+
+    rememberRegions();
+    const pasted = copied.map((region) => duplicateRegion(region));
+    copiedRegionsRef.current = pasted.map((region) => ({ ...region }));
+    setRegions((current) => [...current, ...pasted]);
+    setSelectedIds(pasted.map((region) => region.id));
+    setContextMenu(null);
+    setMessage(`Pasted ${pasted.length === 1 ? "a mask" : `${pasted.length} masks`}. Drag the selection to reposition it.`);
+  }, [rememberRegions]);
+
+  const duplicateMasks = useCallback((items: MaskRegion[]) => {
+    rememberRegions();
+    const duplicates = items.map((region) => duplicateRegion(region));
+    setRegions((current) => [...current, ...duplicates]);
+    setSelectedIds(duplicates.map((region) => region.id));
+    setContextMenu(null);
+    setMessage(`${duplicates.length === 1 ? "Mask" : `${duplicates.length} masks`} duplicated. Drag the selection to place it precisely.`);
+  }, [rememberRegions]);
+
+  const deleteRegions = useCallback((ids: string[]) => {
+    if (!ids.length || !regions.some((region) => ids.includes(region.id))) return;
+    rememberRegions();
+    setRegions((current) => current.filter((region) => !ids.includes(region.id)));
+    setSelectedIds((current) => current.filter((id) => !ids.includes(id)));
+    setContextMenu(null);
+    setMessage(`${ids.length === 1 ? "Mask" : `${ids.length} masks`} deleted. Undo is available if you need it back.`);
+  }, [regions, rememberRegions]);
+
   const analyseImage = async (image: HTMLImageElement) => {
     const token = ++analysisTokenRef.current;
+    setIsAddingMask(false);
     setAnalysisStatus("analyzing");
     setMessage("Analyzing face candidates on this device…");
 
@@ -116,16 +174,14 @@ function MasklyEditor() {
         rememberRegions();
       }
       setRegions(detectedRegions);
-      setSelectedId(detectedRegions[0]?.id ?? null);
+      setSelectedIds(detectedRegions[0] ? [detectedRegions[0].id] : []);
       setAnalysisStatus("ready");
-      setTool(detectedRegions.length ? "select" : "add");
       setMessage(detectedRegions.length
         ? `Found ${detectedRegions.length} face candidate(s). Please review all results.`
         : "No face candidates were found. Please add a region manually.");
     } catch (error) {
       if (token !== analysisTokenRef.current) return;
       setAnalysisStatus("error");
-      setTool("add");
       setMessage("Could not start automatic analysis. Add a region manually or try again.");
       console.error("Face detection failed", error);
     }
@@ -158,16 +214,56 @@ function MasklyEditor() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!event.metaKey && !event.ctrlKey) return;
-      if (event.key.toLowerCase() !== "z") return;
-      event.preventDefault();
-      if (event.shiftKey) redo();
-      else undo();
+      const target = event.target as HTMLElement | null;
+      const isEditingText = target?.matches("input, textarea, select, [contenteditable='true']") ?? false;
+      if (isEditingText) return;
+
+      const key = event.key.toLowerCase();
+      const hasCommandModifier = event.metaKey || event.ctrlKey;
+
+      if (hasCommandModifier && key === "z") {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+        return;
+      }
+
+      if (hasCommandModifier && key === "c" && selectedRegions.length) {
+        event.preventDefault();
+        copyRegions(selectedRegions);
+        return;
+      }
+
+      if (hasCommandModifier && key === "v" && copiedRegionsRef.current.length) {
+        event.preventDefault();
+        pasteCopiedRegions();
+        return;
+      }
+
+      if ((event.key === "Delete" || event.key === "Backspace") && selectedRegions.length) {
+        event.preventDefault();
+        deleteRegions(selectedRegions.map((region) => region.id));
+        return;
+      }
+
+      if (!hasCommandModifier && key === "a" && imageRef.current) {
+        event.preventDefault();
+        setIsAddingMask(true);
+        setContextMenu(null);
+        setMessage("Add mask is ready. Drag the area that should be protected.");
+        return;
+      }
+
+      if (event.key === "Escape") {
+        setContextMenu(null);
+        setIsAddingMask(false);
+        setMessage("Selection mode restored.");
+      }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [redo, undo]);
+  }, [copyRegions, deleteRegions, pasteCopiedRegions, redo, selectedRegions, undo]);
 
   const loadFile = (file: File) => {
     if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
@@ -188,12 +284,14 @@ function MasklyEditor() {
       setFileName(file.name);
       setImageSize({ x: image.naturalWidth, y: image.naturalHeight });
       setRegions([]);
-      setSelectedId(null);
+      setSelectedIds([]);
+      setIsAddingMask(false);
+      setContextMenu(null);
+      copiedRegionsRef.current = [];
       isNewFileRef.current = true;
       undoStackRef.current = [];
       redoStackRef.current = [];
       updateHistoryState();
-      setTool("add");
       void analyseImage(image);
     };
     image.onerror = () => {
@@ -234,24 +332,29 @@ function MasklyEditor() {
     setRegions((current) => current.map((region) => (region.id === id ? { ...region, ...next } : region)));
   };
 
-  const onStagePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!imageRef.current || drag) return;
+  const onStagePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
+    if (!imageRef.current || drag || event.button !== 0) return;
+    if ((event.target as HTMLElement).closest(".canvas-caption")) return;
     const point = normalizePoint(event);
     if (!point) return;
     event.currentTarget.setPointerCapture(event.pointerId);
-
-    if (tool === "add") {
-      setSelectedId(null);
+    setContextMenu(null);
+    if (isAddingMask) {
+      setSelectedIds([]);
       setDrag({ type: "add", start: point, current: point });
+    } else {
+      const initialSelection = event.shiftKey ? selectedIds : [];
+      setSelectedIds(initialSelection);
+      setDrag({ type: "select", start: point, current: point, initialSelection });
     }
   };
 
-  const onStagePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+  const onStagePointerMove = (event: ReactPointerEvent<HTMLElement>) => {
     if (!drag) return;
     const point = normalizePoint(event);
     if (!point) return;
 
-    if (drag.type === "add") {
+    if (drag.type === "add" || drag.type === "select") {
       setDrag({ ...drag, current: point });
       return;
     }
@@ -259,10 +362,21 @@ function MasklyEditor() {
     const dx = point.x - drag.start.x;
     const dy = point.y - drag.start.y;
     if (drag.type === "move") {
-      updateRegion(drag.id, {
-        x: clamp(drag.initial.x + dx, 0, 1 - drag.initial.width),
-        y: clamp(drag.initial.y + dy, 0, 1 - drag.initial.height),
-      });
+      const boundedDx = clamp(
+        dx,
+        Math.max(...drag.initial.map((region) => -region.x)),
+        Math.min(...drag.initial.map((region) => 1 - region.x - region.width)),
+      );
+      const boundedDy = clamp(
+        dy,
+        Math.max(...drag.initial.map((region) => -region.y)),
+        Math.min(...drag.initial.map((region) => 1 - region.y - region.height)),
+      );
+      const initialById = new Map(drag.initial.map((region) => [region.id, region]));
+      setRegions((current) => current.map((region) => {
+        const initial = initialById.get(region.id);
+        return initial ? { ...region, x: initial.x + boundedDx, y: initial.y + boundedDy } : region;
+      }));
       return;
     }
 
@@ -279,33 +393,72 @@ function MasklyEditor() {
       if (region) {
         rememberRegions();
         setRegions((current) => [...current, region]);
-        setSelectedId(region.id);
-        setTool("select");
-        setMessage("Region selected. Drag it or use the lower-right handle to resize it.");
+        setSelectedIds([region.id]);
+        setIsAddingMask(false);
+        setMessage("Mask added. Drag it to move or use the corner handle to resize.");
+      } else {
+        setMessage("Drag a larger area to add a mask, or press Esc to cancel.");
       }
+    } else if (drag.type === "select") {
+      const selection = rectFromPoints(drag.start, drag.current);
+      const matchedIds = regions.filter((region) => intersectsRect(region, selection)).map((region) => region.id);
+      const nextSelection = Array.from(new Set([...drag.initialSelection, ...matchedIds]));
+      setSelectedIds(nextSelection);
+      setMessage(nextSelection.length
+        ? `${nextSelection.length} ${nextSelection.length === 1 ? "mask" : "masks"} selected. Adjust strength or drag them together.`
+        : "No masks intersected the selection area.");
     }
     setDrag(null);
   };
 
   const startMove = (event: ReactPointerEvent<HTMLButtonElement>, region: MaskRegion) => {
+    if (event.button !== 0) return;
     event.stopPropagation();
+    if (event.shiftKey) {
+      setSelectedIds((current) => current.includes(region.id)
+        ? current.filter((id) => id !== region.id)
+        : [...current, region.id]);
+      setContextMenu(null);
+      setMessage("Selection updated. Shift-click another mask or adjust the group.");
+      return;
+    }
     const point = normalizePoint(event);
     if (!point) return;
     event.currentTarget.setPointerCapture(event.pointerId);
+    const ids = selectedIds.includes(region.id) ? selectedIds : [region.id];
     rememberRegions();
-    setSelectedId(region.id);
-    setTool("select");
-    setDrag({ type: "move", id: region.id, start: point, initial: region });
+    setSelectedIds(ids);
+    setContextMenu(null);
+    setDrag({
+      type: "move",
+      start: point,
+      initial: regions.filter((item) => ids.includes(item.id)).map((item) => ({ ...item })),
+    });
   };
 
   const startResize = (event: ReactPointerEvent<HTMLButtonElement>, region: MaskRegion) => {
+    if (event.button !== 0) return;
     event.stopPropagation();
     const point = normalizePoint(event);
     if (!point) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     rememberRegions();
-    setSelectedId(region.id);
+    setSelectedIds([region.id]);
     setDrag({ type: "resize", id: region.id, start: point, initial: region });
+  };
+
+  const openRegionMenu = (event: ReactMouseEvent<HTMLButtonElement>, region: MaskRegion) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const stage = event.currentTarget.closest(".canvas-stage") as HTMLElement | null;
+    if (!stage) return;
+    const bounds = stage.getBoundingClientRect();
+    if (!selectedIds.includes(region.id)) setSelectedIds([region.id]);
+    setContextMenu({
+      id: region.id,
+      x: Math.max(8, Math.min(event.clientX - bounds.left, bounds.width - 184)),
+      y: Math.max(8, Math.min(event.clientY - bounds.top, bounds.height - 148)),
+    });
   };
 
   const exportImage = (format: "png" | "jpeg") => {
@@ -319,14 +472,15 @@ function MasklyEditor() {
     setMessage(`${extension.toUpperCase()} file is ready. Its location follows your browser or app settings.`);
   };
 
-  const draftRect = drag?.type === "add"
-    ? {
-        x: Math.min(drag.start.x, drag.current.x),
-        y: Math.min(drag.start.y, drag.current.y),
-        width: Math.abs(drag.current.x - drag.start.x),
-        height: Math.abs(drag.current.y - drag.start.y),
-      }
+  const draftRect = drag?.type === "add" ? rectFromPoints(drag.start, drag.current) : null;
+  const selectionRect = drag?.type === "select" ? rectFromPoints(drag.start, drag.current) : null;
+  const contextRegion = contextMenu
+    ? regions.find((region) => region.id === contextMenu.id) ?? null
     : null;
+  const contextActionRegions = contextRegion
+    ? selectedIds.includes(contextRegion.id) ? selectedRegions : [contextRegion]
+    : [];
+  const selectedMosaicSizes = new Set(selectedRegions.map((region) => region.mosaicSize));
 
   return (
     <main className="app-shell">
@@ -335,94 +489,142 @@ function MasklyEditor() {
           <span className="wordmark-mark" />
           <span>maskly</span>
         </div>
-        <div className="privacy-status"><span className="status-dot" />Processed on this device</div>
-        <button className="quiet-button" type="button" onClick={() => fileInputRef.current?.click()}>New photo</button>
+        <div className="editor-progress" aria-label="Masking workflow">
+          <span className={fileName ? "complete" : "active"}><i>1</i> Photo</span>
+          <b />
+          <span className={fileName ? "active" : ""}><i>2</i> Review</span>
+          <b />
+          <span><i>3</i> Save</span>
+        </div>
+        <div className="topbar-actions">
+          <div className="privacy-status"><span className="status-dot" />Processed on this device</div>
+          <button className="new-photo-button" type="button" onClick={() => fileInputRef.current?.click()}>New photo</button>
+        </div>
       </header>
 
       <div className="workspace">
         <aside className="left-panel">
           <div className="panel-heading">
-            <span>File</span>
+            <span>Photo</span>
             <span className="counter">{fileName ? "01" : "00"}</span>
           </div>
           <button className="file-row" type="button" onClick={() => fileInputRef.current?.click()}>
-            <span className="file-glyph">⌁</span>
-              <span className="file-copy">
+            <span className="file-glyph">+</span>
+            <span className="file-copy">
               <strong>{fileName ?? "Choose a photo"}</strong>
               <small>{imageSize ? `${imageSize.x} × ${imageSize.y}` : "JPG · PNG · WebP"}</small>
             </span>
           </button>
-          <div className="left-footnote">Photo MVP<br />Video processing coming soon</div>
+          <div className="gesture-guide">
+            <span className="section-label">Canvas controls</span>
+            <strong>Drag to select.</strong>
+            <p>Start a drag anywhere in the workspace to select masks. Shift-drag adds to the current selection.</p>
+          </div>
+          <div className="shortcut-list" aria-label="Keyboard shortcuts">
+            <span className="section-label">Shortcuts</span>
+            <div><span>Copy mask</span><kbd>⌘ C</kbd></div>
+            <div><span>Paste mask</span><kbd>⌘ V</kbd></div>
+            <div><span>Add mask</span><kbd>A</kbd></div>
+            <div><span>Delete mask</span><kbd>⌫</kbd></div>
+            <div><span>Undo</span><kbd>⌘ Z</kbd></div>
+          </div>
         </aside>
 
-        <section className="editor" aria-label="Photo masking editor" onDragOver={onDragOver} onDrop={onDrop}>
+        <section className={`editor ${fileName ? "has-image" : ""}`} aria-label="Photo masking editor" onDragOver={onDragOver} onDrop={onDrop} onPointerDown={onStagePointerDown} onPointerMove={onStagePointerMove} onPointerUp={onStagePointerUp} onPointerCancel={onStagePointerUp}>
           {!imageRef.current ? (
             <button className="drop-zone" type="button" onClick={() => fileInputRef.current?.click()}>
               <span className="drop-mark">+</span>
-              <strong>Drop a photo here</strong>
-              <span>or choose a file</span>
+              <strong>Choose a photo to protect</strong>
+              <span>Drop it here or browse this device</span>
               <small>JPG, PNG, WebP · up to 50 MB</small>
+              <em><span className="status-dot" />Your photo is never uploaded</em>
             </button>
           ) : (
-            <div className={`canvas-stage ${tool === "add" ? "is-adding" : ""}`} onPointerDown={onStagePointerDown} onPointerMove={onStagePointerMove} onPointerUp={onStagePointerUp} onPointerCancel={onStagePointerUp}>
+            <div className={`canvas-stage ${isAddingMask ? "is-adding-mask" : ""}`}>
               <canvas ref={canvasRef} aria-label="Mosaic preview" />
               {regions.map((region, index) => (
                 <div
-                  className={`region ${region.id === selectedId ? "is-selected" : ""}`}
+                  className={`region ${selectedIds.includes(region.id) ? "is-selected" : ""}`}
                   key={region.id}
                   style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` }}
                 >
-                  <button className="region-body" type="button" aria-label={`Select mask ${index + 1}`} onPointerDown={(event) => startMove(event, region)} />
-                  <span className="region-label">MASK {String(index + 1).padStart(2, "0")}</span>
-                  {region.id === selectedId && <button className="resize-handle" type="button" aria-label="Resize mask" onPointerDown={(event) => startResize(event, region)} />}
+                  <button className="region-body" type="button" aria-label={`Select mask ${index + 1}`} onPointerDown={(event) => startMove(event, region)} onContextMenu={(event) => openRegionMenu(event, region)} />
+                  <span className="region-badge">{index + 1}</span>
+                  {selectedRegions.length === 1 && region.id === selectedRegion?.id && <button className="resize-handle" type="button" aria-label="Resize mask" onPointerDown={(event) => startResize(event, region)} />}
                 </div>
               ))}
               {draftRect && <div className="region draft" style={{ left: `${draftRect.x * 100}%`, top: `${draftRect.y * 100}%`, width: `${draftRect.width * 100}%`, height: `${draftRect.height * 100}%` }} />}
+              {selectionRect && <div className="selection-marquee" style={{ left: `${selectionRect.x * 100}%`, top: `${selectionRect.y * 100}%`, width: `${selectionRect.width * 100}%`, height: `${selectionRect.height * 100}%` }} />}
+              {contextMenu && contextRegion && (
+                <div className="region-context-menu" role="menu" aria-label="Mask options" style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={(event) => event.stopPropagation()}>
+                  <span>{contextActionRegions.length > 1 ? `${contextActionRegions.length} masks selected` : "Mask options"}</span>
+                  <button type="button" role="menuitem" onClick={() => copyRegions(contextActionRegions)}>Copy <kbd>⌘ C</kbd></button>
+                  <button type="button" role="menuitem" onClick={() => duplicateMasks(contextActionRegions)}>Duplicate</button>
+                  <button className="danger" type="button" role="menuitem" onClick={() => deleteRegions(contextActionRegions.map((region) => region.id))}>Delete <kbd>⌫</kbd></button>
+                </div>
+              )}
             </div>
           )}
-          <div className="canvas-caption"><span>{analysisStatus === "analyzing" ? "Analyzing automatically" : tool === "add" ? "Add-region mode" : "Select mode"}</span><span>{regions.length} mask(s)</span></div>
+          <div className="canvas-caption">
+            <span>{analysisStatus === "analyzing" ? "Finding face candidates locally…" : isAddingMask ? "Draw a new mask · Esc to cancel" : fileName ? "Drag anywhere to select · Shift-drag to add" : "Ready for a photo"}</span>
+            <span>{regions.length} {regions.length === 1 ? "mask" : "masks"}</span>
+          </div>
         </section>
 
         <aside className="inspector">
-          <div className="panel-heading"><span>Masks</span><span className="counter">{String(regions.length).padStart(2, "0")}</span></div>
-          <div className="tool-switcher" role="group" aria-label="Editing tools">
-            <button className={tool === "select" ? "active" : ""} type="button" onClick={() => setTool("select")}>Select</button>
-            <button className={tool === "add" ? "active" : ""} type="button" onClick={() => setTool("add")}>Add region</button>
+          <div className="panel-heading"><span>Review masks</span><span className="counter">{String(regions.length).padStart(2, "0")}</span></div>
+          <div className="review-summary">
+            <strong>{regions.length ? `${regions.length} masks to review` : "No masks yet"}</strong>
+            <p>{fileName ? "Check every face before saving your copy." : "Choose a photo to begin local analysis."}</p>
           </div>
 
-          <div className="history-actions" role="group" aria-label="Edit history">
-            <button type="button" disabled={!historyState.canUndo} onClick={undo}>Undo</button>
-            <button type="button" disabled={!historyState.canRedo} onClick={redo}>Redo</button>
+          <div className="utility-actions" role="group" aria-label="Editor utilities">
+            <button type="button" disabled={!historyState.canUndo} onClick={undo}>↶ <span>Undo</span></button>
+            <button type="button" disabled={!historyState.canRedo} onClick={redo}>↷ <span>Redo</span></button>
+            <button type="button" disabled={!imageRef.current || analysisStatus === "analyzing"} onClick={() => imageRef.current && void analyseImage(imageRef.current)}>◎ <span>{analysisStatus === "analyzing" ? "Analyzing" : "Reanalyze"}</span></button>
+            <button className={isAddingMask ? "active" : ""} type="button" aria-pressed={isAddingMask} disabled={!imageRef.current} onClick={() => {
+              setIsAddingMask((current) => !current);
+              setContextMenu(null);
+              setMessage(isAddingMask ? "Selection mode restored." : "Add mask is ready. Drag the area that should be protected.");
+            }}>＋ <span>Add mask</span></button>
           </div>
-
-          <button className="analyse-button" type="button" disabled={!imageRef.current || analysisStatus === "analyzing"} onClick={() => imageRef.current && void analyseImage(imageRef.current)}>
-            {analysisStatus === "analyzing" ? "Analyzing faces…" : "Analyze faces again"}
-          </button>
 
           <div className="inspector-body">
             {selectedRegion ? (
               <>
-                <div className="selected-mask"><span>{selectedRegion.source === "detected" ? `Automatic candidate · ${(selectedRegion.confidence ?? 0).toFixed(2)}` : "Manual region"}</span><strong>MASK {String(regions.findIndex((region) => region.id === selectedRegion.id) + 1).padStart(2, "0")}</strong></div>
-                <label className="range-label" htmlFor="mosaic-size">Mosaic intensity <output>{selectedRegion.mosaicSize}</output></label>
-                <input id="mosaic-size" type="range" min="5" max="40" value={selectedRegion.mosaicSize} onPointerDown={rememberRegions} onChange={(event) => updateRegion(selectedRegion.id, { mosaicSize: Number(event.target.value) })} />
-                <button className="delete-button" type="button" onClick={() => { rememberRegions(); setRegions((current) => current.filter((region) => region.id !== selectedRegion.id)); setSelectedId(null); }}>Delete region</button>
+                <div className="selected-mask">
+                  <span>{selectedRegions.length > 1 ? "Group selection" : selectedRegion.source === "detected" ? `Automatic candidate · ${Math.round((selectedRegion.confidence ?? 0) * 100)}%` : "Manual mask"}</span>
+                  <strong>{selectedRegions.length > 1 ? `${selectedRegions.length} masks selected` : `Mask ${String(regions.findIndex((region) => region.id === selectedRegion.id) + 1).padStart(2, "0")}`}</strong>
+                  <small>{selectedRegions.length > 1 ? "Drag any selected mask to move the group together." : "Shift-click another mask to build a group."}</small>
+                </div>
+                <label className="range-label" htmlFor="mosaic-size">Mosaic strength <output>{selectedMosaicSizes.size > 1 ? "Mixed" : selectedRegion.mosaicSize}</output></label>
+                <input id="mosaic-size" type="range" min="5" max="40" value={selectedRegion.mosaicSize} onPointerDown={rememberRegions} onChange={(event) => {
+                  const mosaicSize = Number(event.target.value);
+                  setRegions((current) => applyMosaicSize(current, selectedIds, mosaicSize));
+                }} />
+                <div className="mask-actions">
+                  <button type="button" onClick={() => copyRegions(selectedRegions)}>Copy</button>
+                  <button type="button" onClick={() => duplicateMasks(selectedRegions)}>Duplicate</button>
+                  <button className="delete-button" type="button" onClick={() => deleteRegions(selectedIds)}>Delete</button>
+                </div>
               </>
             ) : (
-              <p className="empty-inspector">Select a region or<br />draw a new one.</p>
+              <div className="empty-inspector"><strong>Select masks to edit</strong><p>Drag across the canvas for a group selection, or choose Add mask to draw a new one.</p></div>
             )}
           </div>
 
           <div className="export-block">
-            <p>Export</p>
+            <span className="section-label">Save masked copy</span>
+            <p>The original photo stays untouched. Review every mask before sharing.</p>
             <div className="export-actions">
-              <button className="export-button" type="button" disabled={!fileName} onClick={() => exportImage("png")}>PNG <span>↗</span></button>
-              <button className="export-button export-button-secondary" type="button" disabled={!fileName} onClick={() => exportImage("jpeg")}>JPG <span>↗</span></button>
+              <button className="export-button" type="button" disabled={!fileName} onClick={() => exportImage("png")}>Export PNG <span>↓</span></button>
+              <button className="export-button export-button-secondary" type="button" disabled={!fileName} onClick={() => exportImage("jpeg")}>JPG <span>↓</span></button>
             </div>
           </div>
         </aside>
       </div>
 
-      <footer className="statusbar"><span>{message}</span><span>{fileName ? "Ready" : "Waiting"}</span></footer>
+      <footer className="statusbar"><span>{message}</span><span><i className="status-dot" />{fileName ? "Local session ready" : "Waiting for photo"}</span></footer>
       <input ref={fileInputRef} className="visually-hidden" type="file" accept="image/jpeg,image/png,image/webp" onChange={onFileChange} />
     </main>
   );
