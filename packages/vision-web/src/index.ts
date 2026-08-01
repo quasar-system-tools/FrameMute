@@ -112,10 +112,20 @@ function detectTile(detector: FaceDetector, image: HTMLImageElement, tile: Tile)
  */
 export async function detectFaces(
   image: HTMLImageElement,
-  assets = { modelPath: "/models/blaze_face_short_range.tflite", wasmPath: "/wasm" },
+  assets = createVisionAssetPaths(
+    typeof document === "undefined" ? "/" : new URL(".", document.baseURI).pathname,
+  ),
 ): Promise<DetectedFace[]> {
   const detector = await getDetector(assets.modelPath, assets.wasmPath);
   const faces = getTiles().flatMap((tile) => detectTile(detector, image, tile));
 
   return deduplicateFaces(faces);
+}
+
+export function createVisionAssetPaths(basePath: string) {
+  const normalizedBase = `/${basePath}`.replace(/\/+/g, "/").replace(/\/?$/, "/");
+  return {
+    modelPath: `${normalizedBase}models/blaze_face_short_range.tflite`,
+    wasmPath: `${normalizedBase}wasm`,
+  };
 }

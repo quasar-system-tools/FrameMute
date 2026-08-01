@@ -1,16 +1,18 @@
-const CACHE = "maskly-local-v3";
+const CACHE = "maskly-local-v4";
+const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
+const fromBase = (path = "") => `${BASE_PATH}/${path}`;
 const APP_SHELL = [
-  "/",
-  "/index.html",
-  "/manifest.webmanifest",
-  "/maskly-mark.svg",
-  "/models/blaze_face_short_range.tflite",
-  "/wasm/vision_wasm_internal.js",
-  "/wasm/vision_wasm_internal.wasm",
-  "/wasm/vision_wasm_module_internal.js",
-  "/wasm/vision_wasm_module_internal.wasm",
-  "/wasm/vision_wasm_nosimd_internal.js",
-  "/wasm/vision_wasm_nosimd_internal.wasm",
+  fromBase(),
+  fromBase("index.html"),
+  fromBase("manifest.webmanifest"),
+  fromBase("maskly-mark.svg"),
+  fromBase("models/blaze_face_short_range.tflite"),
+  fromBase("wasm/vision_wasm_internal.js"),
+  fromBase("wasm/vision_wasm_internal.wasm"),
+  fromBase("wasm/vision_wasm_module_internal.js"),
+  fromBase("wasm/vision_wasm_module_internal.wasm"),
+  fromBase("wasm/vision_wasm_nosimd_internal.js"),
+  fromBase("wasm/vision_wasm_nosimd_internal.wasm"),
 ];
 
 self.addEventListener("install", (event) => {

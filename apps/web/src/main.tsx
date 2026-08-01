@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { MasklyEditor } from "@maskly/editor";
+import MasklyWebApp from "./MasklyWebApp";
 
 if ("serviceWorker" in navigator) {
   if (import.meta.env.DEV) {
@@ -9,13 +9,15 @@ if ("serviceWorker" in navigator) {
     );
   } else {
     window.addEventListener("load", () => {
-      void navigator.serviceWorker.register("/sw.js");
+      void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`, {
+        scope: import.meta.env.BASE_URL,
+      });
     });
   }
 }
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <MasklyEditor />
+    <MasklyWebApp />
   </React.StrictMode>,
 );
