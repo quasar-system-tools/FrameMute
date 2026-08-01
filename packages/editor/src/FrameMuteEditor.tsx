@@ -19,8 +19,8 @@ import {
   type MaskRegion,
   type Point,
   type Rect,
-} from "@maskly/domain";
-import { detectFaces } from "@maskly/vision-web";
+} from "@framemute/domain";
+import { detectFaces } from "@framemute/vision-web";
 import "./editor.css";
 
 type DragState =
@@ -64,7 +64,7 @@ function mosaic(ctx: CanvasRenderingContext2D, image: HTMLImageElement, region: 
   ctx.restore();
 }
 
-function MasklyEditor() {
+function FrameMuteEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
@@ -485,9 +485,9 @@ function MasklyEditor() {
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div className="wordmark" aria-label="Maskly">
+        <div className="wordmark" aria-label="FrameMute">
           <span className="wordmark-mark" />
-          <span>maskly</span>
+          <span>framemute</span>
         </div>
         <div className="editor-progress" aria-label="Masking workflow">
           <span className={fileName ? "complete" : "active"}><i>1</i> Photo</span>
@@ -630,4 +630,4 @@ function MasklyEditor() {
   );
 }
 
-export default MasklyEditor;
+export default FrameMuteEditor;

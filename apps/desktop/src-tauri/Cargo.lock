@@ -1680,7 +1680,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "maskly"
+name = "framemute"
 version = "0.1.0"
 dependencies = [
  "serde",

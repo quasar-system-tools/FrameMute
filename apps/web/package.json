@@ -1,5 +1,5 @@
 {
-  "name": "@maskly/web",
+  "name": "@framemute/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,7 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@maskly/editor": "*",
+    "@framemute/editor": "*",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

@@ -15,7 +15,7 @@ overlapping candidates, and returns at most ten candidates.
 
 ## Verified result
 
-![Maskly applies ten automatic mosaic regions to the AI-generated group portrait](images/multi-face-masking-result.png)
+![FrameMute applies ten automatic mosaic regions to the AI-generated group portrait](images/multi-face-masking-result.png)
 
 The status message reports `Found 10 face candidate(s). Please review all
 results.` Users should still review every automatic mask before exporting.

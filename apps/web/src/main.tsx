@@ -1,6 +1,6 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import MasklyWebApp from "./MasklyWebApp";
+import FrameMuteWebApp from "./FrameMuteWebApp";
 
 if ("serviceWorker" in navigator) {
   if (import.meta.env.DEV) {
@@ -18,6 +18,6 @@ if ("serviceWorker" in navigator) {
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <MasklyWebApp />
+    <FrameMuteWebApp />
   </React.StrictMode>,
 );

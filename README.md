@@ -1,10 +1,10 @@
-# Maskly
+# FrameMute
 
-Maskly is a local-first photo privacy tool. It detects face candidates in a photo, lets you review or draw masking regions, and exports a mosaic-masked image without uploading the original photo to a Maskly server.
+FrameMute is a local-first photo privacy tool. It detects face candidates in a photo, lets you review or draw masking regions, and exports a mosaic-masked image without uploading the original photo to a FrameMute server.
 
 > **Status:** early preview. Review every mask before sharing an exported image.
 
-![Maskly editor empty state](docs/images/maskly-editor-empty-state.jpg)
+![FrameMute editor empty state](docs/images/framemute-editor-empty-state.jpg)
 
 ## What it does
 
@@ -18,9 +18,9 @@ Maskly is a local-first photo privacy tool. It detects face candidates in a phot
 
 ## Privacy model
 
-Maskly has no application backend and does not send selected photos or face-detection results to a Maskly service. The original image is read in the current browser or desktop-app process, and the exported file is created locally.
+FrameMute has no application backend and does not send selected photos or face-detection results to a FrameMute service. The original image is read in the current browser or desktop-app process, and the exported file is created locally.
 
-The PWA may request its own static application assets, model, and WASM files from the host that serves Maskly. These requests do not contain the selected photo. See [the privacy notes](docs/privacy.md) for the precise boundary and limitations.
+The PWA may request its own static application assets, model, and WASM files from the host that serves FrameMute. These requests do not contain the selected photo. See [the privacy notes](docs/privacy.md) for the precise boundary and limitations.
 
 ## Quick start
 
@@ -40,7 +40,7 @@ npm install
 npm run tauri:desktop -- dev
 ```
 
-The desktop app currently targets macOS Apple Silicon for local packaging. The bundle is written to `apps/desktop/src-tauri/target/release/bundle/macos/Maskly.app` after:
+The desktop app currently targets macOS Apple Silicon for local packaging. The bundle is written to `apps/desktop/src-tauri/target/release/bundle/macos/FrameMute.app` after:
 
 ```sh
 npm run tauri:desktop -- build --bundles app
@@ -50,7 +50,7 @@ npm run tauri:desktop -- build --bundles app
 
 1. The selected file is loaded from the local device into the active app process.
 2. MediaPipe runs locally and returns candidate face rectangles in image-relative coordinates.
-3. Maskly adds conservative padding around each candidate. You review, adjust, remove, or add regions manually.
+3. FrameMute adds conservative padding around each candidate. You review, adjust, remove, or add regions manually.
 4. Canvas renders a pixel mosaic only inside the selected regions.
 5. Export encodes the edited canvas into a new PNG or JPG file on the local device.
 
@@ -64,7 +64,7 @@ The following comparison uses an AI-generated image of fictional adults, not a
 real-person photo. Automatic detection created ten mosaic regions locally; each
 result still requires review before export.
 
-| Original (AI-generated) | Masked locally in Maskly |
+| Original (AI-generated) | Masked locally in FrameMute |
 | --- | --- |
 | ![AI-generated group portrait with ten faces](docs/images/multi-face-input-ai-generated.png) | ![Ten automatic mosaic masks applied to the group portrait](docs/images/multi-face-masking-result.png) |
 
@@ -72,9 +72,9 @@ result still requires review before export.
 
 ```text
 apps/web      ─┐
-               ├─ @maskly/editor ─ @maskly/domain
+               ├─ @framemute/editor ─ @framemute/domain
 apps/desktop  ─┘        │
-                         └─ @maskly/vision-web (local MediaPipe model + WASM)
+                         └─ @framemute/vision-web (local MediaPipe model + WASM)
 ```
 
 - `apps/web`: Vite Web/PWA entry point, service worker, CSP, and hosting headers.
@@ -104,5 +104,5 @@ The current preview is photo-only. Video processing, batch workflows, FFmpeg exp
 
 - Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change.
 - Report security issues using [SECURITY.md](SECURITY.md); do not include private photos or credentials in an issue.
-- Maskly source code is available under the [MIT License](LICENSE).
+- FrameMute source code is available under the [MIT License](LICENSE).
 - Third-party notices, including MediaPipe Tasks Vision, are in [NOTICE](NOTICE).
