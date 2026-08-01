@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { deduplicateFaces, MAX_DETECTED_FACES } from "./index";
+import { createVisionAssetPaths, deduplicateFaces, MAX_DETECTED_FACES } from "./index";
 
 describe("web face detection", () => {
   it("configures automatic analysis for group photos with up to ten faces", () => {
@@ -17,5 +17,12 @@ describe("web face detection", () => {
       { x: 0.1, y: 0.1, width: 0.15, height: 0.2, confidence: 0.9 },
       { x: 0.6, y: 0.1, width: 0.15, height: 0.2, confidence: 0.7 },
     ]);
+  });
+
+  it("resolves detector assets below an application base path", () => {
+    expect(createVisionAssetPaths("/Maskly/")).toEqual({
+      modelPath: "/Maskly/models/blaze_face_short_range.tflite",
+      wasmPath: "/Maskly/wasm",
+    });
   });
 });

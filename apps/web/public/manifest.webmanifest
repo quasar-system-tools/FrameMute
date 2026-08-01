@@ -2,13 +2,13 @@
   "name": "Maskly — Local Photo Masking",
   "short_name": "Maskly",
   "description": "Mask faces directly on this device without uploading photos.",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#e9e8e2",
   "theme_color": "#242520",
   "icons": [
     {
-      "src": "/maskly-mark.svg",
+      "src": "maskly-mark.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"
