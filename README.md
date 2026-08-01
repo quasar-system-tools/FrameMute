@@ -4,6 +4,8 @@ Maskly is a local-first photo privacy tool. It detects face candidates in a phot
 
 > **Status:** early preview. Review every mask before sharing an exported image.
 
+![Maskly editor empty state](docs/images/maskly-editor-empty-state.jpg)
+
 ## What it does
 
 - Runs as a desktop application and an installable Web/PWA experience.
