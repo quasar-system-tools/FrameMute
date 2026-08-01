@@ -33,7 +33,7 @@ function LandingPage() {
         <nav className="landing-nav" aria-label="Primary navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#privacy">Privacy</a>
-          <a href="#editor">Open editor</a>
+          <a className="github-link" href="https://github.com/quasar-system-tools/Maskly" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
         </nav>
         <a className="landing-button primary-button small-button" href="#editor">Mask a photo</a>
       </header>
@@ -123,7 +123,10 @@ function LandingPage() {
         </div>
         <div className="privacy-copy">
           <p>Maskly has no application backend for your photos. Face detection, editing, and export happen in the active browser or desktop app process.</p>
-          <a href="https://github.com/quasar-system-tools/Maskly/blob/main/docs/privacy.md">Read the privacy details <span>→</span></a>
+          <div className="privacy-links">
+            <a href="https://github.com/quasar-system-tools/Maskly/blob/main/docs/privacy.md" target="_blank" rel="noreferrer">Read the privacy details <span>→</span></a>
+            <a href="https://github.com/quasar-system-tools/Maskly" target="_blank" rel="noreferrer">View source on GitHub <span>↗</span></a>
+          </div>
         </div>
       </section>
 
@@ -134,7 +137,7 @@ function LandingPage() {
 
       <footer className="landing-footer">
         <a className="landing-brand" href="#top"><img src={markUrl} alt="" /><span>maskly</span></a>
-        <p>Local-first photo privacy.</p>
+        <a className="footer-source-link" href="https://github.com/quasar-system-tools/Maskly" target="_blank" rel="noreferrer">Open-source on GitHub <span aria-hidden="true">↗</span></a>
         <p>Early preview · Always review every mask before sharing.</p>
       </footer>
     </main>
