@@ -1,5 +1,5 @@
 {
-  "name": "@maskly/desktop",
+  "name": "@framemute/desktop",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,7 +14,7 @@
     "verify:native": "cargo fmt --manifest-path src-tauri/Cargo.toml --check && cargo test --manifest-path src-tauri/Cargo.toml"
   },
   "dependencies": {
-    "@maskly/editor": "*",
+    "@framemute/editor": "*",
     "@tauri-apps/api": "^2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"

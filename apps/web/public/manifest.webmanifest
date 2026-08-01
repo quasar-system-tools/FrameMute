@@ -1,6 +1,6 @@
 {
-  "name": "Maskly — Local Photo Masking",
-  "short_name": "Maskly",
+  "name": "FrameMute — Local Photo Masking",
+  "short_name": "FrameMute",
   "description": "Mask faces directly on this device without uploading photos.",
   "start_url": "./",
   "display": "standalone",
@@ -8,7 +8,7 @@
   "theme_color": "#242520",
   "icons": [
     {
-      "src": "maskly-mark.svg",
+      "src": "framemute-mark.svg",
       "sizes": "any",
       "type": "image/svg+xml",
       "purpose": "any"

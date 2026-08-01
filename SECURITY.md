@@ -12,4 +12,4 @@ Do not attach a real photo, credential, access token, private key, or other pers
 
 ## Scope notes
 
-The most important security property is that Maskly does not intentionally upload selected photos to a Maskly service. Reports that show a violation of that boundary, unsafe handling of local files, or an avoidable content-security-policy weakness are especially valuable.
+The most important security property is that FrameMute does not intentionally upload selected photos to a FrameMute service. Reports that show a violation of that boundary, unsafe handling of local files, or an avoidable content-security-policy weakness are especially valuable.

@@ -1,4 +1,4 @@
-# Contributing to Maskly
+# Contributing to FrameMute
 
 ## Before you start
 

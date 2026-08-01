@@ -1,1 +1,1 @@
-export { default as MasklyEditor } from "./MasklyEditor";
+export { default as FrameMuteEditor } from "./FrameMuteEditor";

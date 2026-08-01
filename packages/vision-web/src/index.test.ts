@@ -20,9 +20,9 @@ describe("web face detection", () => {
   });
 
   it("resolves detector assets below an application base path", () => {
-    expect(createVisionAssetPaths("/Maskly/")).toEqual({
-      modelPath: "/Maskly/models/blaze_face_short_range.tflite",
-      wasmPath: "/Maskly/wasm",
+    expect(createVisionAssetPaths("/FrameMute/")).toEqual({
+      modelPath: "/FrameMute/models/blaze_face_short_range.tflite",
+      wasmPath: "/FrameMute/wasm",
     });
   });
 });

@@ -2,16 +2,16 @@
 
 ## Product boundary
 
-Maskly is intentionally local-first. The web application is static and the desktop application is a Tauri shell. Neither application contains an API client for sending selected media to a Maskly backend because no Maskly backend exists.
+FrameMute is intentionally local-first. The web application is static and the desktop application is a Tauri shell. Neither application contains an API client for sending selected media to a FrameMute backend because no FrameMute backend exists.
 
 ## Shared packages
 
 | Package | Responsibility |
 | --- | --- |
-| `@maskly/domain` | Normalized coordinates, safe face padding, region IDs, and geometry constraints. |
-| `@maskly/editor` | React editor controls, canvas rendering, local file loading, edit history, and export. |
-| `@maskly/vision-web` | MediaPipe Tasks Vision initialization and conversion of detections into normalized rectangles. |
-| `@maskly/platform` | Platform-facing contracts reserved for future adapters. |
+| `@framemute/domain` | Normalized coordinates, safe face padding, region IDs, and geometry constraints. |
+| `@framemute/editor` | React editor controls, canvas rendering, local file loading, edit history, and export. |
+| `@framemute/vision-web` | MediaPipe Tasks Vision initialization and conversion of detections into normalized rectangles. |
+| `@framemute/platform` | Platform-facing contracts reserved for future adapters. |
 
 ## Processing flow
 

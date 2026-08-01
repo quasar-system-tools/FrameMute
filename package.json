@@ -1,5 +1,5 @@
 {
-  "name": "maskly",
+  "name": "framemute",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -9,13 +9,13 @@
   ],
   "scripts": {
     "assets:mediapipe": "node scripts/copy-mediapipe-assets.mjs",
-    "dev:desktop": "npm run dev --workspace @maskly/desktop --",
-    "build:desktop": "npm run build --workspace @maskly/desktop",
-    "tauri:desktop": "npm run tauri --workspace @maskly/desktop --",
-    "dev:web": "npm run dev --workspace @maskly/web --",
-    "build:web": "npm run build --workspace @maskly/web",
+    "dev:desktop": "npm run dev --workspace @framemute/desktop --",
+    "build:desktop": "npm run build --workspace @framemute/desktop",
+    "tauri:desktop": "npm run tauri --workspace @framemute/desktop --",
+    "dev:web": "npm run dev --workspace @framemute/web --",
+    "build:web": "npm run build --workspace @framemute/web",
     "test": "vitest run",
-    "verify": "npm run assets:mediapipe && npm run test && npm run build:desktop && npm run build:web && npm run verify:native --workspace @maskly/desktop"
+    "verify": "npm run assets:mediapipe && npm run test && npm run build:desktop && npm run build:web && npm run verify:native --workspace @framemute/desktop"
   },
   "devDependencies": {
     "vitest": "^4.1.10"

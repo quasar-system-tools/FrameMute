@@ -1,5 +1,5 @@
 import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
-import type { DetectedFace } from "@maskly/domain";
+import type { DetectedFace } from "@framemute/domain";
 
 export const MAX_DETECTED_FACES = 10;
 const MIN_CONFIDENCE = 0.5;

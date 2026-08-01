@@ -1,8 +1,8 @@
-# Maskly agent guide
+# FrameMute agent guide
 
 ## Product boundary
 
-- Maskly is a local-first photo privacy tool. Preserve local-only image and
+- FrameMute is a local-first photo privacy tool. Preserve local-only image and
   face-detection processing.
 - Do not add media uploads, telemetry, accounts, cloud synchronization, or
   remote face-analysis calls without a separately reviewed product and privacy

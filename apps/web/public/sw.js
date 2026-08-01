@@ -1,11 +1,11 @@
-const CACHE = "maskly-local-v5";
+const CACHE = "framemute-local-v1";
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const fromBase = (path = "") => `${BASE_PATH}/${path}`;
 const APP_SHELL = [
   fromBase(),
   fromBase("index.html"),
   fromBase("manifest.webmanifest"),
-  fromBase("maskly-mark.svg"),
+  fromBase("framemute-mark.svg"),
   fromBase("models/blaze_face_short_range.tflite"),
   fromBase("wasm/vision_wasm_internal.js"),
   fromBase("wasm/vision_wasm_internal.wasm"),

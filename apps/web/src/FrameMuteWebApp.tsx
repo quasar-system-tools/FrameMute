@@ -1,16 +1,16 @@
 import { useEffect, useState } from "react";
-import { MasklyEditor } from "@maskly/editor";
+import { FrameMuteEditor } from "@framemute/editor";
 import maskedPreviewUrl from "../../../docs/images/multi-face-masking-result.png";
 import "./landing.css";
 
 type View = "landing" | "editor";
-const markUrl = `${import.meta.env.BASE_URL}maskly-mark.svg`;
+const markUrl = `${import.meta.env.BASE_URL}framemute-mark.svg`;
 
 function currentView(): View {
   return window.location.hash === "#editor" ? "editor" : "landing";
 }
 
-function MasklyWebApp() {
+function FrameMuteWebApp() {
   const [view, setView] = useState<View>(currentView);
 
   useEffect(() => {
@@ -19,21 +19,21 @@ function MasklyWebApp() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
-  return view === "editor" ? <MasklyEditor /> : <LandingPage />;
+  return view === "editor" ? <FrameMuteEditor /> : <LandingPage />;
 }
 
 function LandingPage() {
   return (
     <main className="landing-shell">
       <header className="landing-header">
-        <a className="landing-brand" href="#top" aria-label="Maskly home">
+        <a className="landing-brand" href="#top" aria-label="FrameMute home">
           <img src={markUrl} alt="" />
-          <span>maskly</span>
+          <span>framemute</span>
         </a>
         <nav className="landing-nav" aria-label="Primary navigation">
           <a href="#how-it-works">How it works</a>
           <a href="#privacy">Privacy</a>
-          <a className="github-link" href="https://github.com/quasar-system-tools/Maskly" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
+          <a className="github-link" href="https://github.com/quasar-system-tools/FrameMute" target="_blank" rel="noreferrer">GitHub <span aria-hidden="true">↗</span></a>
         </nav>
         <a className="landing-button primary-button small-button" href="#editor">Mask a photo</a>
       </header>
@@ -52,11 +52,11 @@ function LandingPage() {
           <p className="hero-note">No account. No upload. You stay in control.</p>
         </div>
 
-        <div className="product-preview" aria-label="Maskly face review preview">
+        <div className="product-preview" aria-label="FrameMute masking editor preview">
           <div className="preview-toolbar">
-            <span className="preview-brand"><img src={markUrl} alt="" /> maskly</span>
+            <span className="preview-brand"><img src={markUrl} alt="" /> framemute</span>
             <span className="local-pill"><i /> Processed on this device</span>
-            <span className="preview-step">2 / 3 · Review faces</span>
+            <span className="preview-step">Local editor preview</span>
           </div>
           <div className="preview-body">
             <div className="preview-photo">
@@ -66,23 +66,23 @@ function LandingPage() {
               <span className="review-marker marker-three">7</span>
             </div>
             <div className="preview-panel">
-              <span className="preview-kicker">Face review</span>
-              <strong>3 of 10 reviewed</strong>
+              <span className="preview-kicker">Detected regions</span>
+              <strong>10 mask candidates</strong>
               <div className="preview-progress"><span /></div>
               <div className="preview-control"><span>Selected face</span><b>03</b></div>
               <div className="preview-control preview-control-stack">
                 <span>Mosaic strength</span>
                 <div className="fake-range"><i /></div>
               </div>
-              <button type="button" tabIndex={-1}>Review next face <span>→</span></button>
-              <small>Export unlocks after every face has been reviewed.</small>
+              <button type="button" tabIndex={-1}>Open the editor <span>→</span></button>
+              <small>Automatic detection always needs human review.</small>
             </div>
           </div>
         </div>
       </section>
 
       <section className="trust-strip" aria-label="Privacy highlights">
-        <article><span>01</span><div><strong>No photo uploads</strong><p>Your original image never leaves this device.</p></div></article>
+        <article><span>01</span><div><strong>No photo uploads</strong><p>FrameMute does not upload your selected photo.</p></div></article>
         <article><span>02</span><div><strong>Local face detection</strong><p>The detection model runs inside the app.</p></div></article>
         <article><span>03</span><div><strong>Human review built in</strong><p>Check every mask before you save and share.</p></div></article>
       </section>
@@ -119,13 +119,13 @@ function LandingPage() {
         <div className="privacy-mark" aria-hidden="true"><span /></div>
         <div>
           <p className="eyebrow">Your photo. Your device.</p>
-          <h2>Privacy is not a setting.<br />It is the architecture.</h2>
+          <h2>Your photo stays local.<br />Your choices stay yours.</h2>
         </div>
         <div className="privacy-copy">
-          <p>Maskly has no application backend for your photos. Face detection, editing, and export happen in the active browser or desktop app process.</p>
+          <p>FrameMute has no application backend for your photos. Face detection, editing, and export happen in the active browser or desktop app process.</p>
           <div className="privacy-links">
-            <a href="https://github.com/quasar-system-tools/Maskly/blob/main/docs/privacy.md" target="_blank" rel="noreferrer">Read the privacy details <span>→</span></a>
-            <a href="https://github.com/quasar-system-tools/Maskly" target="_blank" rel="noreferrer">View source on GitHub <span>↗</span></a>
+            <a href="https://github.com/quasar-system-tools/FrameMute/blob/main/docs/privacy.md" target="_blank" rel="noreferrer">Read the privacy details <span>→</span></a>
+            <a href="https://github.com/quasar-system-tools/FrameMute" target="_blank" rel="noreferrer">View source on GitHub <span>↗</span></a>
           </div>
         </div>
       </section>
@@ -136,12 +136,12 @@ function LandingPage() {
       </section>
 
       <footer className="landing-footer">
-        <a className="landing-brand" href="#top"><img src={markUrl} alt="" /><span>maskly</span></a>
-        <a className="footer-source-link" href="https://github.com/quasar-system-tools/Maskly" target="_blank" rel="noreferrer">Open-source on GitHub <span aria-hidden="true">↗</span></a>
+        <a className="landing-brand" href="#top"><img src={markUrl} alt="" /><span>framemute</span></a>
+        <a className="footer-source-link" href="https://github.com/quasar-system-tools/FrameMute" target="_blank" rel="noreferrer">Open-source on GitHub <span aria-hidden="true">↗</span></a>
         <p>Early preview · Always review every mask before sharing.</p>
       </footer>
     </main>
   );
 }
 
-export default MasklyWebApp;
+export default FrameMuteWebApp;
