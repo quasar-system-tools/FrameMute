@@ -1,39 +1,94 @@
 # Maskly
 
-Maskly is a local-first tool for masking sensitive information in photos and videos. This npm-workspaces monorepo includes a desktop application in `apps/desktop` and an install-free photo PWA in `apps/web`.
+Maskly is a local-first photo privacy tool. It detects face candidates in a photo, lets you review or draw masking regions, and exports a mosaic-masked image without uploading the original photo to a Maskly server.
 
-## Current scope
+> **Status:** early preview. Review every mask before sharing an exported image.
 
-- Select or drag and drop JPG, PNG, and WebP images up to 50 MB
-- Add, select, move, resize, and remove manual mask regions
-- Undo and redo edits with `Cmd/Ctrl+Z`
-- Preview pixel mosaics with Canvas
-- Adjust mosaic intensity per region
-- Export PNG and JPG images
-- Cache the Web/PWA service worker and local MediaPipe model/WASM assets
+## What it does
 
-Automatic face detection, video processing, and FFmpeg export are planned for a future iteration. Face detection will only suggest regions for the user to review.
+- Runs as a desktop application and an installable Web/PWA experience.
+- Accepts JPG, PNG, and WebP photos up to 50 MB.
+- Detects face candidates locally with MediaPipe Tasks Vision.
+- Lets you add, select, move, resize, and delete mask regions.
+- Provides undo and redo with `Cmd/Ctrl+Z` and `Cmd/Ctrl+Shift+Z`.
+- Previews and exports mosaic masking as PNG or JPG.
+- Caches the PWA shell and its local model/WASM assets for offline use after the first successful load.
 
-## Run
+## Privacy model
+
+Maskly has no application backend and does not send selected photos or face-detection results to a Maskly service. The original image is read in the current browser or desktop-app process, and the exported file is created locally.
+
+The PWA may request its own static application assets, model, and WASM files from the host that serves Maskly. These requests do not contain the selected photo. See [the privacy notes](docs/privacy.md) for the precise boundary and limitations.
+
+## Quick start
+
+### Web/PWA
+
+```sh
+npm install
+npm run dev:web
+```
+
+Open the local URL printed by Vite, choose a photo, review the suggested regions, and export the result.
+
+### Desktop application
 
 ```sh
 npm install
 npm run tauri:desktop -- dev
 ```
 
-Start the Web/PWA development server:
+The desktop app currently targets macOS Apple Silicon for local packaging. The bundle is written to `apps/desktop/src-tauri/target/release/bundle/macos/Maskly.app` after:
 
 ```sh
-npm run dev:web
-```
-
-## Verify
-
-```sh
-npm run verify
 npm run tauri:desktop -- build --bundles app
 ```
 
-The macOS Apple Silicon application bundle is produced at `apps/desktop/src-tauri/target/release/bundle/macos/Maskly.app`. Public distribution requires separate code signing and notarization.
+## How masking works
 
-The Web static build is produced at `apps/web/dist`. It can be deployed to Cloudflare Pages or GitHub Pages after a hosting account and domain are configured.
+1. The selected file is loaded from the local device into the active app process.
+2. MediaPipe runs locally and returns candidate face rectangles in image-relative coordinates.
+3. Maskly adds conservative padding around each candidate. You review, adjust, remove, or add regions manually.
+4. Canvas renders a pixel mosaic only inside the selected regions.
+5. Export encodes the edited canvas into a new PNG or JPG file on the local device.
+
+Automatic detection is an aid, not a guarantee. It may miss faces or identify unsuitable regions; manual review is required for any privacy-sensitive use.
+
+## Architecture
+
+```text
+apps/web      ─┐
+               ├─ @maskly/editor ─ @maskly/domain
+apps/desktop  ─┘        │
+                         └─ @maskly/vision-web (local MediaPipe model + WASM)
+```
+
+- `apps/web`: Vite Web/PWA entry point, service worker, CSP, and hosting headers.
+- `apps/desktop`: Tauri shell that uses the same editor.
+- `packages/domain`: normalized region geometry and masking rules.
+- `packages/editor`: shared React editor and Canvas renderer.
+- `packages/vision-web`: local MediaPipe face-detection adapter.
+
+Read the fuller [architecture overview](docs/architecture.md).
+
+## Development and verification
+
+```sh
+npm run test
+npm run build:web
+npm run build:desktop
+npm run verify
+```
+
+`verify` also checks Rust formatting and tests for the desktop shell. GitHub Actions runs the TypeScript tests and both web and desktop front-end builds for every pull request and push to `main`.
+
+## Roadmap and non-goals
+
+The current preview is photo-only. Video processing, batch workflows, FFmpeg export, cloud synchronization, accounts, and server-side image analysis are not implemented.
+
+## Contributing, security, and license
+
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a change.
+- Report security issues using [SECURITY.md](SECURITY.md); do not include private photos or credentials in an issue.
+- Maskly source code is available under the [MIT License](LICENSE).
+- Third-party notices, including MediaPipe Tasks Vision, are in [NOTICE](NOTICE).

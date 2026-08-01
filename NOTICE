@@ -1,0 +1,8 @@
+Maskly includes or depends on third-party software.
+
+MediaPipe Tasks Vision
+Copyright 2024 Google LLC
+Licensed under the Apache License, Version 2.0.
+https://www.apache.org/licenses/LICENSE-2.0
+
+See package metadata and lockfiles for the complete dependency set and their licenses.

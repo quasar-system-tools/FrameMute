@@ -23,6 +23,8 @@ type DragState =
   | { type: "move"; id: string; start: Point; initial: MaskRegion }
   | { type: "resize"; id: string; start: Point; initial: MaskRegion };
 
+const SUPPORTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 function mosaic(ctx: CanvasRenderingContext2D, image: HTMLImageElement, region: MaskRegion) {
   const x = Math.round(region.x * image.naturalWidth);
   const y = Math.round(region.y * image.naturalHeight);
@@ -168,7 +170,7 @@ function MasklyEditor() {
   }, [redo, undo]);
 
   const loadFile = (file: File) => {
-    if (!file.type.startsWith("image/")) {
+    if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
       setMessage("Only JPG, PNG, and WebP image files are currently supported.");
       return;
     }
