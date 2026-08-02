@@ -226,15 +226,19 @@ function FrameMuteEditor() {
       return;
     }
 
-    const syncCanvasDisplaySize = () => {
-      const { width, height } = canvas.getBoundingClientRect();
+    const syncCanvasDisplaySize = ({ width, height }: DOMRectReadOnly) => {
       setCanvasDisplaySize((current) => current?.width === width && current.height === height
         ? current
         : { width, height });
     };
 
-    syncCanvasDisplaySize();
-    const observer = new ResizeObserver(syncCanvasDisplaySize);
+    const observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+
+      // contentRect excludes the temporary preview-protection transform. Measuring
+      // the transformed border box can leave mask overlays scaled after analysis.
+      syncCanvasDisplaySize(entry.contentRect);
+    });
     observer.observe(canvas);
     return () => observer.disconnect();
   }, [imageSize]);
