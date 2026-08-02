@@ -1,9 +1,11 @@
 import {
   ChangeEvent,
+  type CSSProperties,
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -16,9 +18,11 @@ import {
   intersectsRect,
   MAX_IMAGE_SIZE,
   MIN_REGION,
+  scaleRect,
   type MaskRegion,
   type Point,
   type Rect,
+  type Size,
 } from "@framemute/domain";
 import { detectFaces } from "@framemute/vision-web";
 import "./editor.css";
@@ -43,10 +47,11 @@ function rectFromPoints(start: Point, end: Point): Rect {
 }
 
 function mosaic(ctx: CanvasRenderingContext2D, image: HTMLImageElement, region: MaskRegion) {
-  const x = Math.round(region.x * image.naturalWidth);
-  const y = Math.round(region.y * image.naturalHeight);
-  const width = Math.round(region.width * image.naturalWidth);
-  const height = Math.round(region.height * image.naturalHeight);
+  const pixelRegion = scaleRect(region, { width: image.naturalWidth, height: image.naturalHeight });
+  const x = Math.round(pixelRegion.x);
+  const y = Math.round(pixelRegion.y);
+  const width = Math.round(pixelRegion.width);
+  const height = Math.round(pixelRegion.height);
   const cell = Math.max(1, Math.round(region.mosaicSize));
   const smallWidth = Math.max(1, Math.floor(width / cell));
   const smallHeight = Math.max(1, Math.floor(height / cell));
@@ -64,6 +69,12 @@ function mosaic(ctx: CanvasRenderingContext2D, image: HTMLImageElement, region: 
   ctx.restore();
 }
 
+function overlayStyle(rect: Rect, canvasSize: Size | null): CSSProperties {
+  if (!canvasSize) return { visibility: "hidden" };
+  const pixels = scaleRect(rect, canvasSize);
+  return { left: pixels.x, top: pixels.y, width: pixels.width, height: pixels.height };
+}
+
 function FrameMuteEditor() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -77,6 +88,7 @@ function FrameMuteEditor() {
 
   const [fileName, setFileName] = useState<string | null>(null);
   const [imageSize, setImageSize] = useState<Point | null>(null);
+  const [canvasDisplaySize, setCanvasDisplaySize] = useState<Size | null>(null);
   const [regions, setRegions] = useState<MaskRegion[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -204,6 +216,26 @@ function FrameMuteEditor() {
   useEffect(() => {
     drawPreview();
   }, [drawPreview]);
+
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !imageSize) {
+      setCanvasDisplaySize(null);
+      return;
+    }
+
+    const syncCanvasDisplaySize = () => {
+      const { width, height } = canvas.getBoundingClientRect();
+      setCanvasDisplaySize((current) => current?.width === width && current.height === height
+        ? current
+        : { width, height });
+    };
+
+    syncCanvasDisplaySize();
+    const observer = new ResizeObserver(syncCanvasDisplaySize);
+    observer.observe(canvas);
+    return () => observer.disconnect();
+  }, [imageSize]);
 
   useEffect(
     () => () => {
@@ -546,15 +578,15 @@ function FrameMuteEditor() {
                 <div
                   className={`region ${selectedIds.includes(region.id) ? "is-selected" : ""}`}
                   key={region.id}
-                  style={{ left: `${region.x * 100}%`, top: `${region.y * 100}%`, width: `${region.width * 100}%`, height: `${region.height * 100}%` }}
+                  style={overlayStyle(region, canvasDisplaySize)}
                 >
                   <button className="region-body" type="button" aria-label={`Select mask ${index + 1}`} onPointerDown={(event) => startMove(event, region)} onContextMenu={(event) => openRegionMenu(event, region)} />
                   <span className="region-badge">{index + 1}</span>
                   {selectedRegions.length === 1 && region.id === selectedRegion?.id && <button className="resize-handle" type="button" aria-label="Resize mask" onPointerDown={(event) => startResize(event, region)} />}
                 </div>
               ))}
-              {draftRect && <div className="region draft" style={{ left: `${draftRect.x * 100}%`, top: `${draftRect.y * 100}%`, width: `${draftRect.width * 100}%`, height: `${draftRect.height * 100}%` }} />}
-              {selectionRect && <div className="selection-marquee" style={{ left: `${selectionRect.x * 100}%`, top: `${selectionRect.y * 100}%`, width: `${selectionRect.width * 100}%`, height: `${selectionRect.height * 100}%` }} />}
+              {draftRect && <div className="region draft" style={overlayStyle(draftRect, canvasDisplaySize)} />}
+              {selectionRect && <div className="selection-marquee" style={overlayStyle(selectionRect, canvasDisplaySize)} />}
               {contextMenu && contextRegion && (
                 <div className="region-context-menu" role="menu" aria-label="Mask options" style={{ left: contextMenu.x, top: contextMenu.y }} onPointerDown={(event) => event.stopPropagation()}>
                   <span>{contextActionRegions.length > 1 ? `${contextActionRegions.length} masks selected` : "Mask options"}</span>

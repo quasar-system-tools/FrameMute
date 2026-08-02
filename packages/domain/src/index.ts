@@ -1,5 +1,7 @@
 export type Point = { x: number; y: number };
 
+export type Size = { width: number; height: number };
+
 export type Rect = {
   x: number;
   y: number;
@@ -106,6 +108,15 @@ export function intersectsRect(region: Rect, selection: Rect) {
     && region.x + region.width > selection.x
     && region.y < selection.y + selection.height
     && region.y + region.height > selection.y;
+}
+
+export function scaleRect(rect: Rect, size: Size): Rect {
+  return {
+    x: rect.x * size.width,
+    y: rect.y * size.height,
+    width: rect.width * size.width,
+    height: rect.height * size.height,
+  };
 }
 
 export function applyMosaicSize(regions: MaskRegion[], selectedIds: string[], mosaicSize: number) {
