@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyMosaicSize, clamp, createDetectedRegions, createManualRegion, duplicateRegion, intersectsRect, MIN_REGION } from "./index";
+import { applyMosaicSize, clamp, createDetectedRegions, createManualRegion, duplicateRegion, intersectsRect, MIN_REGION, scaleRect } from "./index";
 
 describe("mask regions", () => {
   it("clamps values to the normalized image bounds", () => {
@@ -44,6 +44,13 @@ describe("mask regions", () => {
     expect(intersectsRect({ x: 0.1, y: 0.1, width: 0.2, height: 0.2 }, selection)).toBe(true);
     expect(intersectsRect({ x: 0.5, y: 0.2, width: 0.1, height: 0.1 }, selection)).toBe(false);
     expect(intersectsRect({ x: 0.7, y: 0.7, width: 0.1, height: 0.1 }, selection)).toBe(false);
+  });
+
+  it("scales normalized mask bounds to the rendered canvas size", () => {
+    expect(scaleRect(
+      { x: 0.1, y: 0.2, width: 0.3, height: 0.4 },
+      { width: 900, height: 500 },
+    )).toEqual({ x: 90, y: 100, width: 270, height: 200 });
   });
 
   it("changes mosaic strength only for the selected masks", () => {
