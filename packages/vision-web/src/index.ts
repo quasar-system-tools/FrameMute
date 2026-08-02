@@ -1,11 +1,13 @@
 import { FaceDetector, FilesetResolver } from "@mediapipe/tasks-vision";
 import type { DetectedFace } from "@framemute/domain";
 
-export const MAX_DETECTED_FACES = 10;
+export const MAX_DETECTED_FACES = 200;
 const MIN_CONFIDENCE = 0.5;
-const TILE_COLUMNS = 5;
-const TILE_ROWS = 2;
+const COARSE_TILES_ON_LONG_AXIS = 4;
+const DETAIL_TILES_ON_LONG_AXIS = 8;
 const TILE_OVERLAP = 0.12;
+const YIELD_INTERVAL = 4;
+const DETAIL_SCAN_TRIGGER_COUNT = 4;
 
 type Tile = { x: number; y: number; width: number; height: number };
 
@@ -29,13 +31,20 @@ async function getDetector(modelPath: string, wasmPath: string) {
   }
 }
 
-function getTiles(): Tile[] {
-  const tileWidth = 1 / TILE_COLUMNS;
-  const tileHeight = 1 / TILE_ROWS;
+export function createDetectionTiles(imageWidth: number, imageHeight: number, tilesOnLongAxis: number): Tile[] {
+  const isLandscape = imageWidth >= imageHeight;
+  const columns = isLandscape
+    ? tilesOnLongAxis
+    : Math.max(1, Math.round(tilesOnLongAxis * imageWidth / imageHeight));
+  const rows = isLandscape
+    ? Math.max(1, Math.round(tilesOnLongAxis * imageHeight / imageWidth))
+    : tilesOnLongAxis;
+  const tileWidth = 1 / columns;
+  const tileHeight = 1 / rows;
 
-  return Array.from({ length: TILE_COLUMNS * TILE_ROWS }, (_, index) => {
-    const column = index % TILE_COLUMNS;
-    const row = Math.floor(index / TILE_COLUMNS);
+  return Array.from({ length: columns * rows }, (_, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
     const left = Math.max(0, column * tileWidth - tileWidth * TILE_OVERLAP);
     const top = Math.max(0, row * tileHeight - tileHeight * TILE_OVERLAP);
     const right = Math.min(1, (column + 1) * tileWidth + tileWidth * TILE_OVERLAP);
@@ -43,6 +52,10 @@ function getTiles(): Tile[] {
 
     return { x: left, y: top, width: right - left, height: bottom - top };
   });
+}
+
+export function shouldRunDetailedScan(faces: DetectedFace[]) {
+  return faces.length < DETAIL_SCAN_TRIGGER_COUNT;
 }
 
 function intersectionOverSmallerArea(first: DetectedFace, second: DetectedFace) {
@@ -105,6 +118,19 @@ function detectTile(detector: FaceDetector, image: HTMLImageElement, tile: Tile)
   });
 }
 
+async function scanTiles(detector: FaceDetector, image: HTMLImageElement, tiles: Tile[]) {
+  const faces: DetectedFace[] = [];
+
+  for (let index = 0; index < tiles.length; index += 1) {
+    faces.push(...detectTile(detector, image, tiles[index]));
+    if ((index + 1) % YIELD_INTERVAL === 0) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  return faces;
+}
+
 /**
  * Returns face rectangles in image-relative coordinates. The detector is run
  * over overlapping tiles so group photos are not limited to one candidate.
@@ -117,9 +143,21 @@ export async function detectFaces(
   ),
 ): Promise<DetectedFace[]> {
   const detector = await getDetector(assets.modelPath, assets.wasmPath);
-  const faces = getTiles().flatMap((tile) => detectTile(detector, image, tile));
+  const coarseFaces = await scanTiles(
+    detector,
+    image,
+    createDetectionTiles(image.naturalWidth, image.naturalHeight, COARSE_TILES_ON_LONG_AXIS),
+  );
 
-  return deduplicateFaces(faces);
+  if (!shouldRunDetailedScan(coarseFaces)) return deduplicateFaces(coarseFaces);
+
+  const detailedFaces = await scanTiles(
+    detector,
+    image,
+    createDetectionTiles(image.naturalWidth, image.naturalHeight, DETAIL_TILES_ON_LONG_AXIS),
+  );
+
+  return deduplicateFaces([...coarseFaces, ...detailedFaces]);
 }
 
 export function createVisionAssetPaths(basePath: string) {
