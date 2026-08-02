@@ -8,13 +8,12 @@ FrameMute is a local-first photo privacy tool. It detects face candidates in a p
 
 ## What it does
 
-- Runs as a desktop application and an installable Web/PWA experience.
+- Runs as a desktop application and a static web experience.
 - Accepts JPG, PNG, and WebP photos up to 50 MB.
 - Detects face candidates locally with MediaPipe Tasks Vision.
 - Lets you add, select, move, resize, and delete mask regions.
 - Provides undo and redo with `Cmd/Ctrl+Z` and `Cmd/Ctrl+Shift+Z`.
 - Previews and exports mosaic masking as PNG or JPG.
-- Caches the PWA shell and its local model/WASM assets for offline use after the first successful load.
 
 ## Privacy model
 
@@ -77,7 +76,7 @@ apps/desktop  ─┘        │
                          └─ @framemute/vision-web (local MediaPipe model + WASM)
 ```
 
-- `apps/web`: Vite Web/PWA entry point, service worker, CSP, and hosting headers.
+- `apps/web`: Vite web entry point, legacy cache cleanup, CSP, and hosting configuration.
 - `apps/desktop`: Tauri shell that uses the same editor.
 - `packages/domain`: normalized region geometry and masking rules.
 - `packages/editor`: shared React editor and Canvas renderer.

@@ -26,6 +26,7 @@ import {
 } from "@framemute/domain";
 import { detectFaces } from "@framemute/vision-web";
 import "./editor.css";
+import { shouldProtectInitialPreview, type AnalysisStatus } from "./previewState";
 
 type DragState =
   | { type: "add"; start: Point; current: Point }
@@ -94,12 +95,13 @@ function FrameMuteEditor() {
   const [drag, setDrag] = useState<DragState | null>(null);
   const [isAddingMask, setIsAddingMask] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
-  const [analysisStatus, setAnalysisStatus] = useState<"idle" | "analyzing" | "ready" | "error">("idle");
+  const [analysisStatus, setAnalysisStatus] = useState<AnalysisStatus>("idle");
   const [message, setMessage] = useState("Photos are edited only on this device.");
   const [historyState, setHistoryState] = useState({ canUndo: false, canRedo: false });
 
   const selectedRegions = regions.filter((region) => selectedIds.includes(region.id));
   const selectedRegion = regions.find((region) => region.id === selectedIds[selectedIds.length - 1]) ?? null;
+  const isProtectingPreview = shouldProtectInitialPreview(analysisStatus, regions.length);
 
   const updateHistoryState = () => {
     setHistoryState({ canUndo: undoStackRef.current.length > 0, canRedo: redoStackRef.current.length > 0 });
@@ -213,7 +215,7 @@ function FrameMuteEditor() {
     regions.forEach((region) => mosaic(context, image, region));
   }, [regions]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     drawPreview();
   }, [drawPreview]);
 
@@ -365,7 +367,7 @@ function FrameMuteEditor() {
   };
 
   const onStagePointerDown = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!imageRef.current || drag || event.button !== 0) return;
+    if (!imageRef.current || drag || event.button !== 0 || isProtectingPreview) return;
     if ((event.target as HTMLElement).closest(".canvas-caption")) return;
     const point = normalizePoint(event);
     if (!point) return;
@@ -572,8 +574,15 @@ function FrameMuteEditor() {
               <em><span className="status-dot" />Your photo is never uploaded</em>
             </button>
           ) : (
-            <div className={`canvas-stage ${isAddingMask ? "is-adding-mask" : ""}`}>
+            <div className={`canvas-stage ${isAddingMask ? "is-adding-mask" : ""} ${isProtectingPreview ? "is-protecting-preview" : ""}`} aria-busy={isProtectingPreview}>
               <canvas ref={canvasRef} aria-label="Mosaic preview" />
+              {isProtectingPreview && (
+                <div className="analysis-shield" role="status" aria-live="polite">
+                  <span className="analysis-spinner" aria-hidden="true" />
+                  <strong>Preparing a protected preview</strong>
+                  <p>Detecting mask candidates locally before showing your photo.</p>
+                </div>
+              )}
               {regions.map((region, index) => (
                 <div
                   className={`region ${selectedIds.includes(region.id) ? "is-selected" : ""}`}
@@ -614,7 +623,7 @@ function FrameMuteEditor() {
             <button type="button" disabled={!historyState.canUndo} onClick={undo}>↶ <span>Undo</span></button>
             <button type="button" disabled={!historyState.canRedo} onClick={redo}>↷ <span>Redo</span></button>
             <button type="button" disabled={!imageRef.current || analysisStatus === "analyzing"} onClick={() => imageRef.current && void analyseImage(imageRef.current)}>◎ <span>{analysisStatus === "analyzing" ? "Analyzing" : "Reanalyze"}</span></button>
-            <button className={isAddingMask ? "active" : ""} type="button" aria-pressed={isAddingMask} disabled={!imageRef.current} onClick={() => {
+            <button className={isAddingMask ? "active" : ""} type="button" aria-pressed={isAddingMask} disabled={!imageRef.current || isProtectingPreview} onClick={() => {
               setIsAddingMask((current) => !current);
               setContextMenu(null);
               setMessage(isAddingMask ? "Selection mode restored." : "Add mask is ready. Drag the area that should be protected.");
@@ -649,8 +658,8 @@ function FrameMuteEditor() {
             <span className="section-label">Save masked copy</span>
             <p>The original photo stays untouched. Review every mask before sharing.</p>
             <div className="export-actions">
-              <button className="export-button" type="button" disabled={!fileName} onClick={() => exportImage("png")}>Export PNG <span>↓</span></button>
-              <button className="export-button export-button-secondary" type="button" disabled={!fileName} onClick={() => exportImage("jpeg")}>JPG <span>↓</span></button>
+              <button className="export-button" type="button" disabled={!fileName || analysisStatus === "analyzing"} onClick={() => exportImage("png")}>Export PNG <span>↓</span></button>
+              <button className="export-button export-button-secondary" type="button" disabled={!fileName || analysisStatus === "analyzing"} onClick={() => exportImage("jpeg")}>JPG <span>↓</span></button>
             </div>
           </div>
         </aside>

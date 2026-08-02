@@ -9,7 +9,7 @@
 
 ## Network requests
 
-The Web/PWA can request FrameMute's static application files, service worker, MediaPipe model, and WASM files from the host serving the app. These requests are for application assets only; the selected photo is not part of them. Once cached, the app shell and model assets are available offline after a successful initial load.
+The web app requests FrameMute's static application files, MediaPipe model, and WASM files from the host serving the app. These requests are for application assets only; the selected photo is not part of them. FrameMute does not register an application service worker or maintain an app-managed offline cache. The browser and host may still apply normal HTTP caching.
 
 The desktop application reads the same assets from its local bundle.
 
