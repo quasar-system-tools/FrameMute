@@ -10,7 +10,7 @@ FrameMute is intentionally local-first. The web application is static and the de
 | --- | --- |
 | `@framemute/domain` | Normalized coordinates, safe face padding, region IDs, and geometry constraints. |
 | `@framemute/editor` | React editor controls, canvas rendering, local file loading, edit history, and export. |
-| `@framemute/vision-web` | MediaPipe Tasks Vision initialization and conversion of detections into normalized rectangles. |
+| `@framemute/vision-web` | Resolution-derived MediaPipe scanning, landmark validation, and conversion into normalized rectangles. |
 | `@framemute/platform` | Platform-facing contracts reserved for future adapters. |
 
 ## Processing flow
@@ -19,7 +19,13 @@ FrameMute is intentionally local-first. The web application is static and the de
 Local file picker
       │
       ▼
-Browser or Tauri process ──► HTML image element ──► MediaPipe face detector
+Browser or Tauri process ──► HTML image element ──► adaptive overlapping scan pyramid
+      │                                                    │
+      │                                                    ▼
+      │                                      MediaPipe face detector
+      │                                                    │
+      │                                                    ▼
+      │                                      Face Landmarker validation
       │                                                    │
       │                                                    ▼
       └──────────────────────────────► reviewed mask regions ──► Canvas mosaic ──► local PNG/JPG export

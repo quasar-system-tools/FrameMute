@@ -48,10 +48,11 @@ npm run tauri:desktop -- build --bundles app
 ## How masking works
 
 1. The selected file is loaded from the local device into the active app process.
-2. MediaPipe runs locally and returns candidate face rectangles in image-relative coordinates.
-3. FrameMute adds conservative padding around each candidate. You review, adjust, remove, or add regions manually.
-4. Canvas renders a pixel mosaic only inside the selected regions.
-5. Export encodes the edited canvas into a new PNG or JPG file on the local device.
+2. A local, overlapping scan pyramid searches at scales derived from the image resolution, without a fixed person-count limit.
+3. MediaPipe Face Landmarker validates and tightens each candidate to reduce hand and background false positives.
+4. FrameMute adds conservative padding around each candidate. You review, adjust, remove, or add regions manually.
+5. Canvas renders a pixel mosaic only inside the selected regions.
+6. Export encodes the edited canvas into a new PNG or JPG file on the local device.
 
 Automatic detection is an aid, not a guarantee. It may miss faces or identify unsuitable regions; manual review is required for any privacy-sensitive use.
 
@@ -80,7 +81,7 @@ apps/desktop  ─┘        │
 - `apps/desktop`: Tauri shell that uses the same editor.
 - `packages/domain`: normalized region geometry and masking rules.
 - `packages/editor`: shared React editor and Canvas renderer.
-- `packages/vision-web`: local MediaPipe face-detection adapter.
+- `packages/vision-web`: adaptive local MediaPipe face detection and landmark validation.
 
 Read the fuller [architecture overview](docs/architecture.md).
 
