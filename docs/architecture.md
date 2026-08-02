@@ -27,9 +27,9 @@ Browser or Tauri process ──► HTML image element ──► MediaPipe face d
 
 Face rectangles are normalized to the image dimensions. The domain package applies padding, clamps every region to the image bounds, and rejects manual regions that are too small to edit.
 
-## Web/PWA delivery
+## Web delivery
 
-The web application ships as static Vite assets. A service worker caches the application shell, the bundled BlazeFace model, and MediaPipe WASM modules after a successful install. The hosting headers restrict executable, image, connection, worker, and font sources to the same origin, plus local `blob:` and `data:` image URLs needed during editing.
+The web application ships as static Vite assets. It does not register an application service worker or maintain an app-managed offline cache; hashed bundles and ordinary HTTP revalidation handle updates. A temporary retirement worker and client cleanup remove caches left by earlier previews. The hosting headers restrict executable, image, connection, worker, and font sources to the same origin, plus local `blob:` and `data:` image URLs needed during editing.
 
 ## Desktop delivery
 

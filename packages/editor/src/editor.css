@@ -60,6 +60,13 @@ kbd { font: 500 9px ui-monospace, SFMono-Regular, Menlo, monospace; }
 .canvas-stage { position: relative; align-self: center; justify-self: center; max-width: 100%; max-height: 100%; line-height: 0; box-shadow: 0 22px 52px rgba(38, 39, 35, .17); user-select: none; cursor: crosshair; }
 .canvas-stage.is-adding-mask { box-shadow: 0 0 0 3px rgba(230, 93, 67, .28), 0 22px 52px rgba(38, 39, 35, .17); }
 .canvas-stage canvas { display: block; max-width: min(100%, 1050px); max-height: calc(100vh - 168px); width: auto; height: auto; }
+.canvas-stage.is-protecting-preview { overflow: hidden; cursor: progress; }
+.canvas-stage.is-protecting-preview canvas { filter: blur(28px); transform: scale(1.04); }
+.analysis-shield { position: absolute; inset: 0; z-index: 30; display: grid; place-content: center; justify-items: center; gap: 9px; padding: 24px; color: #2b2e29; background: rgba(238, 236, 230, .84); backdrop-filter: blur(12px); line-height: normal; text-align: center; pointer-events: none; }
+.analysis-shield strong { font-size: 17px; letter-spacing: -.25px; }
+.analysis-shield p { max-width: 310px; margin: 0; color: #6c7069; font-size: 10px; line-height: 1.55; }
+.analysis-spinner { width: 26px; height: 26px; margin-bottom: 3px; border: 2px solid rgba(95, 128, 111, .24); border-top-color: #5f806f; border-radius: 50%; animation: analysis-spin .8s linear infinite; }
+@keyframes analysis-spin { to { transform: rotate(360deg); } }
 .region { position: absolute; border: 1.5px solid rgba(255, 255, 255, .92); box-shadow: 0 0 0 1px rgba(29, 31, 27, .68); line-height: normal; }
 .region.is-selected { z-index: 3; border-color: #e65d43; box-shadow: 0 0 0 1px #7b2f20, 0 0 0 4px rgba(230, 93, 67, .13); }
 .region.draft { pointer-events: none; border-style: dashed; border-color: #e65d43; background: rgba(230, 93, 67, .12); }
@@ -105,4 +112,4 @@ input[type="range"] { width: 100%; accent-color: #e65d43; }
   .inspector { display: block; padding: 18px; }.review-summary, .utility-actions, .inspector-body, .export-block { margin-top: 14px; padding-top: 14px; }.export-block { border-top: 1px solid #deddd6; }
 }
 
-@media (prefers-reduced-motion: reduce) { .drop-zone { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .drop-zone { transition: none; }.analysis-spinner { animation: none; } }
