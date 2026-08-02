@@ -1,4 +1,4 @@
-const CACHE = "framemute-local-v1";
+const CACHE = "framemute-local-v2";
 const BASE_PATH = new URL(self.registration.scope).pathname.replace(/\/$/, "");
 const fromBase = (path = "") => `${BASE_PATH}/${path}`;
 const APP_SHELL = [
