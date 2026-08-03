@@ -89,12 +89,13 @@ Read the fuller [architecture overview](docs/architecture.md).
 
 ```sh
 npm run test
+npm run test:vision
 npm run build:web
 npm run build:desktop
 npm run verify
 ```
 
-`verify` also checks Rust formatting and tests for the desktop shell. GitHub Actions runs the TypeScript tests and both web and desktop front-end builds for every pull request and push to `main`.
+`test:vision` runs the actual local MediaPipe models in headless Chromium without loading the editor UI. `verify` also checks Rust formatting and tests for the desktop shell. GitHub Actions runs the TypeScript tests, vision runtime test, and both web and desktop front-end builds for every pull request and push to `main`. See [vision runtime testing](docs/vision-runtime-testing.md) for synthetic fixtures and local-only reports.
 
 ## Roadmap and non-goals
 

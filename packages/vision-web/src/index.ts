@@ -1,15 +1,19 @@
 import { FaceDetector, FaceLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
 import type { DetectedFace, Rect } from "@framemute/domain";
 
-const MIN_CONFIDENCE = 0.5;
+const DETECTOR_MIN_CONFIDENCE = 0.35;
+const LANDMARKER_MIN_CONFIDENCE = 0.5;
 const INITIAL_TILES_ON_LONG_AXIS = 4;
-const MIN_SOURCE_TILE_SIZE = 96;
+const MIN_SOURCE_TILE_SIZE = 64;
 const TILE_OVERLAP = 0.12;
 const YIELD_INTERVAL = 4;
 const VALIDATION_CANVAS_SIZE = 192;
+const VALIDATION_CROP_SCALE = 1.15;
+const DUPLICATE_OVERLAP_THRESHOLD = 0.8;
 
 type Tile = { x: number; y: number; width: number; height: number };
 type LandmarkPoint = { x: number; y: number };
+type DetectionCandidate = DetectedFace & { keypoints: LandmarkPoint[] };
 
 let detectorPromise: Promise<FaceDetector> | undefined;
 let landmarkerPromise: Promise<FaceLandmarker> | undefined;
@@ -20,7 +24,7 @@ async function getDetector(modelPath: string, wasmPath: string) {
     return FaceDetector.createFromOptions(vision, {
       baseOptions: { modelAssetPath: modelPath },
       runningMode: "IMAGE",
-      minDetectionConfidence: MIN_CONFIDENCE,
+      minDetectionConfidence: DETECTOR_MIN_CONFIDENCE,
     });
   })();
 
@@ -39,8 +43,8 @@ async function getLandmarker(modelPath: string, wasmPath: string) {
       baseOptions: { modelAssetPath: modelPath },
       runningMode: "IMAGE",
       numFaces: 1,
-      minFaceDetectionConfidence: MIN_CONFIDENCE,
-      minFacePresenceConfidence: MIN_CONFIDENCE,
+      minFaceDetectionConfidence: LANDMARKER_MIN_CONFIDENCE,
+      minFacePresenceConfidence: LANDMARKER_MIN_CONFIDENCE,
     });
   })();
 
@@ -99,18 +103,18 @@ function intersectionOverSmallerArea(first: DetectedFace, second: DetectedFace) 
   return smallerArea ? intersection / smallerArea : 0;
 }
 
-export function deduplicateFaces(faces: DetectedFace[]) {
+export function deduplicateFaces<Face extends DetectedFace>(faces: Face[]) {
   return [...faces]
     .sort((first, second) => second.confidence - first.confidence)
-    .reduce<DetectedFace[]>((uniqueFaces, face) => {
+    .reduce<Face[]>((uniqueFaces, face) => {
       const isDuplicate = uniqueFaces.some(
-        (existingFace) => intersectionOverSmallerArea(existingFace, face) >= 0.35,
+        (existingFace) => intersectionOverSmallerArea(existingFace, face) >= DUPLICATE_OVERLAP_THRESHOLD,
       );
       return isDuplicate ? uniqueFaces : [...uniqueFaces, face];
     }, []);
 }
 
-function detectTile(detector: FaceDetector, image: HTMLImageElement, tile: Tile): DetectedFace[] {
+function detectTile(detector: FaceDetector, image: HTMLImageElement, tile: Tile): DetectionCandidate[] {
   const sourceX = Math.round(tile.x * image.naturalWidth);
   const sourceY = Math.round(tile.y * image.naturalHeight);
   const sourceWidth = Math.round(tile.width * image.naturalWidth);
@@ -143,12 +147,16 @@ function detectTile(detector: FaceDetector, image: HTMLImageElement, tile: Tile)
       width: (box.width / sourceWidth) * tile.width,
       height: (box.height / sourceHeight) * tile.height,
       confidence: detection.categories[0]?.score ?? 0,
+      keypoints: detection.keypoints.map((keypoint) => ({
+        x: tile.x + keypoint.x * tile.width,
+        y: tile.y + keypoint.y * tile.height,
+      })),
     }];
   });
 }
 
 async function scanTiles(detector: FaceDetector, image: HTMLImageElement, tiles: Tile[]) {
-  const faces: DetectedFace[] = [];
+  const faces: DetectionCandidate[] = [];
 
   for (let index = 0; index < tiles.length; index += 1) {
     faces.push(...detectTile(detector, image, tiles[index]));
@@ -160,19 +168,44 @@ async function scanTiles(detector: FaceDetector, image: HTMLImageElement, tiles:
   return faces;
 }
 
+export function validationCropForFace(face: DetectedFace, keypoints: LandmarkPoint[] = []): Rect {
+  if (!keypoints.length) {
+    const cropSize = Math.min(1, Math.max(face.width, face.height) * VALIDATION_CROP_SCALE);
+    return {
+      x: Math.max(0, face.x + face.width / 2 - cropSize / 2),
+      y: Math.max(0, face.y + face.height / 2 - cropSize / 2),
+      width: cropSize,
+      height: cropSize,
+    };
+  }
+
+  const minX = Math.min(...keypoints.map((keypoint) => keypoint.x));
+  const minY = Math.min(...keypoints.map((keypoint) => keypoint.y));
+  const maxX = Math.max(...keypoints.map((keypoint) => keypoint.x));
+  const maxY = Math.max(...keypoints.map((keypoint) => keypoint.y));
+  const cropSize = Math.min(1, Math.max((maxX - minX) * 1.4, (maxY - minY) * 2.4));
+  const centerX = (minX + maxX) / 2;
+  const centerY = (minY + maxY) / 2;
+
+  return {
+    x: Math.max(0, Math.min(1 - cropSize, centerX - cropSize / 2)),
+    y: Math.max(0, Math.min(1 - cropSize, centerY - cropSize / 2)),
+    width: cropSize,
+    height: cropSize,
+  };
+}
+
 function validateFace(
   landmarker: FaceLandmarker,
   image: HTMLImageElement,
-  face: DetectedFace,
+  face: DetectionCandidate,
   canvas: HTMLCanvasElement,
 ): DetectedFace | null {
-  const centerX = face.x + face.width / 2;
-  const centerY = face.y + face.height / 2;
-  const cropSize = Math.max(face.width, face.height);
-  const left = Math.max(0, centerX - cropSize / 2);
-  const top = Math.max(0, centerY - cropSize / 2);
-  const right = Math.min(1, centerX + cropSize / 2);
-  const bottom = Math.min(1, centerY + cropSize / 2);
+  const crop = validationCropForFace(face, face.keypoints);
+  const left = crop.x;
+  const top = crop.y;
+  const right = crop.x + crop.width;
+  const bottom = crop.y + crop.height;
   const context = canvas.getContext("2d");
   if (!context) return null;
 
@@ -218,7 +251,7 @@ export function faceFromLandmarks(
   };
 }
 
-async function validateFaces(landmarker: FaceLandmarker, image: HTMLImageElement, faces: DetectedFace[]) {
+async function validateFaces(landmarker: FaceLandmarker, image: HTMLImageElement, faces: DetectionCandidate[]) {
   const canvas = document.createElement("canvas");
   canvas.width = VALIDATION_CANVAS_SIZE;
   canvas.height = VALIDATION_CANVAS_SIZE;
@@ -235,20 +268,25 @@ async function validateFaces(landmarker: FaceLandmarker, image: HTMLImageElement
   return deduplicateFaces(validated);
 }
 
+export type FaceDetectionDiagnostics = {
+  candidates: DetectedFace[];
+  faces: DetectedFace[];
+};
+
 /**
  * Returns face rectangles in image-relative coordinates. A resolution-derived
  * overlapping scan pyramid avoids fixed person-count limits, then a local face
  * landmarker validates and tightens the detector candidates.
  * No image data or detection result leaves this process.
  */
-export async function detectFaces(
+export async function detectFacesWithDiagnostics(
   image: HTMLImageElement,
   assets = createVisionAssetPaths(
     typeof document === "undefined" ? "/" : new URL(".", document.baseURI).pathname,
   ),
-): Promise<DetectedFace[]> {
+): Promise<FaceDetectionDiagnostics> {
   const detector = await getDetector(assets.modelPath, assets.wasmPath);
-  const faces: DetectedFace[] = [];
+  const faces: DetectionCandidate[] = [];
 
   for (const level of createScanLevels(image.naturalWidth, image.naturalHeight)) {
     faces.push(...await scanTiles(
@@ -260,7 +298,16 @@ export async function detectFaces(
 
   const candidates = deduplicateFaces(faces);
   const landmarker = await getLandmarker(assets.landmarkerPath, assets.wasmPath);
-  return validateFaces(landmarker, image, candidates);
+  return { candidates, faces: await validateFaces(landmarker, image, candidates) };
+}
+
+export async function detectFaces(
+  image: HTMLImageElement,
+  assets = createVisionAssetPaths(
+    typeof document === "undefined" ? "/" : new URL(".", document.baseURI).pathname,
+  ),
+): Promise<DetectedFace[]> {
+  return (await detectFacesWithDiagnostics(image, assets)).faces;
 }
 
 export function createVisionAssetPaths(basePath: string) {

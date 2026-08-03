@@ -5,6 +5,7 @@ import {
   createVisionAssetPaths,
   deduplicateFaces,
   faceFromLandmarks,
+  validationCropForFace,
 } from "./index";
 
 describe("web face detection", () => {
@@ -22,9 +23,9 @@ describe("web face detection", () => {
   });
 
   it("derives scan depth from image resolution rather than a person limit", () => {
-    expect(createScanLevels(512, 320)).toEqual([4, 6]);
-    expect(createScanLevels(1536, 1024)).toEqual([4, 8, 16]);
-    expect(createScanLevels(10_000, 7_000)).toEqual([4, 8, 16, 32, 64, 105]);
+    expect(createScanLevels(512, 320)).toEqual([4, 8]);
+    expect(createScanLevels(1536, 1024)).toEqual([4, 8, 16, 24]);
+    expect(createScanLevels(10_000, 7_000)).toEqual([4, 8, 16, 32, 64, 128, 157]);
   });
 
   it("keeps distinct faces while removing overlapping tile detections", () => {
@@ -38,6 +39,15 @@ describe("web face detection", () => {
       { x: 0.1, y: 0.1, width: 0.15, height: 0.2, confidence: 0.9 },
       { x: 0.6, y: 0.1, width: 0.15, height: 0.2, confidence: 0.7 },
     ]);
+  });
+
+  it("keeps distinct candidates even when their mask areas overlap", () => {
+    const faces = deduplicateFaces([
+      { x: 0.1, y: 0.1, width: 0.15, height: 0.2, confidence: 0.9 },
+      { x: 0.16, y: 0.1, width: 0.15, height: 0.2, confidence: 0.8 },
+    ]);
+
+    expect(faces).toHaveLength(2);
   });
 
   it("does not truncate dense results after removing duplicate candidates", () => {
@@ -66,6 +76,18 @@ describe("web face detection", () => {
     expect(validated?.width).toBeCloseTo(0.16);
     expect(validated?.height).toBeCloseTo(0.16);
     expect(faceFromLandmarks(face, { x: 0.1, y: 0.1, width: 0.2, height: 0.2 }, [])).toBeNull();
+  });
+
+  it("centers landmark validation on detector keypoints when its box is oversized", () => {
+    const crop = validationCropForFace(
+      { x: 0.2, y: 0.2, width: 0.4, height: 0.5, confidence: 0.8 },
+      [{ x: 0.31, y: 0.23 }, { x: 0.37, y: 0.23 }, { x: 0.34, y: 0.3 }],
+    );
+
+    expect(crop.width).toBeCloseTo(0.168);
+    expect(crop.height).toBeCloseTo(0.168);
+    expect(crop.x).toBeCloseTo(0.256);
+    expect(crop.y).toBeCloseTo(0.181);
   });
 
   it("resolves detector assets below an application base path", () => {
