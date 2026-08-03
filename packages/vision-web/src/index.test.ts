@@ -5,6 +5,7 @@ import {
   createVisionAssetPaths,
   deduplicateFaces,
   faceFromLandmarks,
+  selectFaceClosestToCandidate,
   validationCropForFace,
 } from "./index";
 
@@ -88,6 +89,21 @@ describe("web face detection", () => {
     expect(crop.height).toBeCloseTo(0.168);
     expect(crop.x).toBeCloseTo(0.256);
     expect(crop.y).toBeCloseTo(0.181);
+  });
+
+  it("keeps a dense-crowd candidate paired with its nearest landmark face", () => {
+    const selected = selectFaceClosestToCandidate(
+      { x: 0.4, y: 0.4, width: 0.18, height: 0.18, confidence: 0.8 },
+      { x: 0.35, y: 0.35, width: 0.3, height: 0.3 },
+      [
+        [{ x: 0.05, y: 0.1 }, { x: 0.25, y: 0.7 }],
+        [{ x: 0.55, y: 0.1 }, { x: 0.75, y: 0.7 }],
+      ],
+      [{ x: 0.58, y: 0.35 }, { x: 0.68, y: 0.35 }],
+    );
+
+    expect(selected).toMatchObject({ confidence: 0.8 });
+    expect(selected?.x).toBeCloseTo(0.515);
   });
 
   it("resolves detector assets below an application base path", () => {

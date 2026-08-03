@@ -1,5 +1,5 @@
 import { detectFacesWithDiagnostics } from "@framemute/vision-web";
-import type { DetectedFace } from "@framemute/domain";
+import { createDetectedRegions, type DetectedFace, type MaskRegion } from "@framemute/domain";
 import fixtureUrl from "../../../docs/images/multi-face-input-ai-generated.png";
 
 export type VisionRuntimeResult = {
@@ -9,6 +9,7 @@ export type VisionRuntimeResult = {
   facesInBounds: boolean;
   imageHeight: number;
   imageWidth: number;
+  maskRegions: MaskRegion[];
   rejectedCandidateCount: number;
 };
 
@@ -100,6 +101,7 @@ export async function runVisionRuntime(source = fixtureUrl): Promise<VisionRunti
     )),
     imageHeight: image.naturalHeight,
     imageWidth: image.naturalWidth,
+    maskRegions: createDetectedRegions(faces),
     rejectedCandidateCount: rejectedCandidates.length,
   };
 }
