@@ -10,6 +10,7 @@ const YIELD_INTERVAL = 4;
 const VALIDATION_CANVAS_SIZE = 192;
 const VALIDATION_CROP_SCALE = 1.15;
 const DUPLICATE_OVERLAP_THRESHOLD = 0.8;
+const MAX_LANDMARK_FACES_PER_CROP = 8;
 
 type Tile = { x: number; y: number; width: number; height: number };
 type LandmarkPoint = { x: number; y: number };
@@ -42,7 +43,9 @@ async function getLandmarker(modelPath: string, wasmPath: string) {
     return FaceLandmarker.createFromOptions(vision, {
       baseOptions: { modelAssetPath: modelPath },
       runningMode: "IMAGE",
-      numFaces: 1,
+      // A detector proposal can overlap adjacent people in a dense crowd. This
+      // limit applies only to one small validation crop, never to the image.
+      numFaces: MAX_LANDMARK_FACES_PER_CROP,
       minFaceDetectionConfidence: LANDMARKER_MIN_CONFIDENCE,
       minFacePresenceConfidence: LANDMARKER_MIN_CONFIDENCE,
     });
@@ -222,10 +225,34 @@ function validateFace(
     canvas.height,
   );
 
-  const landmarks = landmarker.detect(canvas).faceLandmarks[0];
-  if (!landmarks?.length) return null;
+  const cropRect = { x: left, y: top, width: right - left, height: bottom - top };
+  const landmarkFaces = landmarker.detect(canvas).faceLandmarks;
+  return selectFaceClosestToCandidate(face, cropRect, landmarkFaces, face.keypoints);
+}
 
-  return faceFromLandmarks(face, { x: left, y: top, width: right - left, height: bottom - top }, landmarks);
+export function selectFaceClosestToCandidate(
+  face: DetectedFace,
+  crop: Rect,
+  landmarkFaces: LandmarkPoint[][],
+  keypoints: LandmarkPoint[] = [],
+): DetectedFace | null {
+  const target = keypoints.length
+    ? {
+      x: (Math.min(...keypoints.map((keypoint) => keypoint.x)) + Math.max(...keypoints.map((keypoint) => keypoint.x))) / 2,
+      y: (Math.min(...keypoints.map((keypoint) => keypoint.y)) + Math.max(...keypoints.map((keypoint) => keypoint.y))) / 2,
+    }
+    : { x: face.x + face.width / 2, y: face.y + face.height / 2 };
+
+  const faces = landmarkFaces
+    .map((landmarks) => faceFromLandmarks(face, crop, landmarks))
+    .filter((candidate): candidate is DetectedFace => candidate !== null);
+
+  if (!faces.length) return null;
+  return faces.reduce((closest, candidate) => {
+    const closestDistance = (closest.x + closest.width / 2 - target.x) ** 2 + (closest.y + closest.height / 2 - target.y) ** 2;
+    const candidateDistance = (candidate.x + candidate.width / 2 - target.x) ** 2 + (candidate.y + candidate.height / 2 - target.y) ** 2;
+    return candidateDistance < closestDistance ? candidate : closest;
+  });
 }
 
 export function faceFromLandmarks(
