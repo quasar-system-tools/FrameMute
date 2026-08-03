@@ -1,17 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   createDetectionTiles,
+  createScanLevels,
   createVisionAssetPaths,
   deduplicateFaces,
-  MAX_DETECTED_FACES,
-  shouldRunDetailedScan,
+  faceFromLandmarks,
 } from "./index";
 
 describe("web face detection", () => {
-  it("keeps enough candidates for dense crowd photos", () => {
-    expect(MAX_DETECTED_FACES).toBe(200);
-  });
-
   it("creates near-square detail tiles for a wide crowd photo", () => {
     const tiles = createDetectionTiles(1024, 619, 8);
 
@@ -25,18 +21,10 @@ describe("web face detection", () => {
     expect(tiles.at(-1)?.height).toBeCloseTo(0.224);
   });
 
-  it("adds a detail scan when the coarse pass finds too few candidates", () => {
-    expect(shouldRunDetailedScan([])).toBe(true);
-    expect(shouldRunDetailedScan([
-      { x: 0.1, y: 0.1, width: 0.04, height: 0.08, confidence: 0.8 },
-      { x: 0.3, y: 0.1, width: 0.06, height: 0.1, confidence: 0.75 },
-    ])).toBe(true);
-    expect(shouldRunDetailedScan([
-      { x: 0.1, y: 0.1, width: 0.1, height: 0.2, confidence: 0.9 },
-      { x: 0.3, y: 0.1, width: 0.1, height: 0.2, confidence: 0.85 },
-      { x: 0.5, y: 0.1, width: 0.1, height: 0.2, confidence: 0.8 },
-      { x: 0.7, y: 0.1, width: 0.1, height: 0.2, confidence: 0.75 },
-    ])).toBe(false);
+  it("derives scan depth from image resolution rather than a person limit", () => {
+    expect(createScanLevels(512, 320)).toEqual([4, 6]);
+    expect(createScanLevels(1536, 1024)).toEqual([4, 8, 16]);
+    expect(createScanLevels(10_000, 7_000)).toEqual([4, 8, 16, 32, 64, 105]);
   });
 
   it("keeps distinct faces while removing overlapping tile detections", () => {
@@ -52,8 +40,8 @@ describe("web face detection", () => {
     ]);
   });
 
-  it("caps dense results without returning duplicate candidates", () => {
-    const faces = Array.from({ length: MAX_DETECTED_FACES + 1 }, (_, index) => ({
+  it("does not truncate dense results after removing duplicate candidates", () => {
+    const faces = Array.from({ length: 250 }, (_, index) => ({
       x: (index % 20) * 0.045,
       y: Math.floor(index / 20) * 0.045,
       width: 0.01,
@@ -61,12 +49,29 @@ describe("web face detection", () => {
       confidence: 0.9 - index / 10_000,
     }));
 
-    expect(deduplicateFaces(faces)).toHaveLength(MAX_DETECTED_FACES);
+    expect(deduplicateFaces(faces)).toHaveLength(250);
+  });
+
+  it("normalizes a candidate to its validated landmark bounds", () => {
+    const face = { x: 0.2, y: 0.2, width: 0.1, height: 0.1, confidence: 0.82 };
+
+    const validated = faceFromLandmarks(
+      face,
+      { x: 0.15, y: 0.15, width: 0.2, height: 0.2 },
+      [{ x: -0.1, y: 0.2 }, { x: 0.8, y: 1.1 }],
+    );
+
+    expect(validated).toMatchObject({ x: 0.15, confidence: 0.82 });
+    expect(validated?.y).toBeCloseTo(0.19);
+    expect(validated?.width).toBeCloseTo(0.16);
+    expect(validated?.height).toBeCloseTo(0.16);
+    expect(faceFromLandmarks(face, { x: 0.1, y: 0.1, width: 0.2, height: 0.2 }, [])).toBeNull();
   });
 
   it("resolves detector assets below an application base path", () => {
     expect(createVisionAssetPaths("/FrameMute/")).toEqual({
       modelPath: "/FrameMute/models/blaze_face_short_range.tflite",
+      landmarkerPath: "/FrameMute/models/face_landmarker.task",
       wasmPath: "/FrameMute/wasm",
     });
   });
