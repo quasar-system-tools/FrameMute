@@ -25,6 +25,8 @@ secrets.json
 *.log
 *.local
 coverage/
+playwright-report/
+test-results/
 *.tsbuildinfo
 
 # Local Korean-language planning and verification records.

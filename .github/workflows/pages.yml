@@ -24,10 +24,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - run: npm run test
+      - run: npm run test:vision
       - run: npm run build:web
         env:
           VITE_BASE_PATH: /FrameMute/
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vision-runtime-artifacts
+          path: test-results
+          if-no-files-found: ignore
       - uses: actions/upload-pages-artifact@v4
         with:
           path: apps/web/dist

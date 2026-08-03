@@ -15,9 +15,12 @@
     "dev:web": "npm run dev --workspace @framemute/web --",
     "build:web": "npm run build --workspace @framemute/web",
     "test": "vitest run",
-    "verify": "npm run assets:mediapipe && npm run test && npm run build:desktop && npm run build:web && npm run verify:native --workspace @framemute/desktop"
+    "test:vision": "playwright test",
+    "test:vision:local": "playwright test tests/vision-runtime.spec.ts --grep local-image",
+    "verify": "npm run assets:mediapipe && npm run test && npm run test:vision && npm run build:desktop && npm run build:web && npm run verify:native --workspace @framemute/desktop"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "vitest": "^4.1.10"
   }
 }
