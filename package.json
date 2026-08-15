@@ -17,6 +17,7 @@
     "test": "vitest run",
     "test:vision": "playwright test",
     "test:vision:local": "playwright test tests/vision-runtime.spec.ts --grep local-image",
+    "test:vision:editor-local": "playwright test tests/vision-runtime.spec.ts --grep local-editor",
     "verify": "npm run assets:mediapipe && npm run test && npm run test:vision && npm run build:desktop && npm run build:web && npm run verify:native --workspace @framemute/desktop"
   },
   "devDependencies": {

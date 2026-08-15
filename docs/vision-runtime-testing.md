@@ -9,6 +9,7 @@ npm run test
 npm run test:vision
 VISION_IMAGE=/absolute/path/to/photo.jpg npm run test:vision:local
 VISION_IMAGE=/absolute/path/to/photo.jpg VISION_COVERAGE=/absolute/path/to/coverage.json npm run test:vision:local
+VISION_IMAGE=/absolute/path/to/photo.jpg VISION_COVERAGE=/absolute/path/to/coverage.json npm run test:vision:editor-local
 ```
 
 `test:vision` starts a local Vite server, opens only `vision-runtime.html` in headless Chromium, draws the fixture into a canvas, and calls `detectFaces()` directly. It asserts the expected result for the committed AI-generated ten-face fixture:
@@ -39,3 +40,5 @@ Use a local JSON file for the few face centers you need to regress. Coordinates 
 ```
 
 The file stays outside the repository next to the private test photo. This turns a visually found miss into a repeatable local regression without publishing the photo, its people, or face coordinates.
+
+`test:vision:editor-local` uses the same local file-input and shared editor path as the app. It verifies that every named target is inside a final rendered mask overlay and saves the actual mosaic canvas preview under ignored `test-results/` for visual review.
